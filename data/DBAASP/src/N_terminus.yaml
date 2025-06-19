@@ -252,25 +252,3 @@ TPA: C1=CC(=CC=C1C(=O)O)C(=O)O
 VitE: CC1=C(C(=C(C2=C1O[C@](CC2)(C)CCC[C@H](C)CCC[C@H](C)CCCC(C)C)C)OC(=O)CCC(=O)O)C
 pHCA: C1=CC(=CC=C1C=CC(=O)O)O
 pNBA: C1=CC(=CC=C1C(=O)O)[N+](=O)[O-]
-# Hemolytik
-Acetylation: CC=O
-Formylation: C=O
-Dansylation: CN(C1=C2C=CC=C(C2=CC=C1)[S](=O)=O)C
-Fmoc: '[C](=O)OCC1C2=CC=CC=C2C2=CC=CC=C12'
-Tosylation: '[S](=O)(=O)C1=CC=C(C)C=C1'
-Benzoylation: '[C](C1=CC=CC=C1)=O'
-Palmitoylation: '[C](CCCCCCCCCCCCCCC)=O'
-'Conjugated with lauric acid': C(CCCCCCCCCCC)(=O)O
-'pHCA= Hydroxy cinnamic acid': OC1=CC=C(C=CC(=O)O)C=C1
-'Acetylation (CH3(CH2)4CO)': CCCCCC(=O)
-'Acetylation (CH3(CH2)6CO)': CCCCCCCC(=O)
-# DRAMP
-FITC: C1=CC2=C(C=C1N=C=S)C(=O)OC23C4=C(C=C(C=C4)O)OC5=C3C=CC(=C5)O
-'Rhodamine B': CCN(CC)C1=CC2=C(C=C1)C(=C3C=CC(=[N+](CC)CC)C=C3O2)C4=CC=CC=C4C(=O)O.[Cl-]
-Fluorescein: C1=CC=C2C(=C1)C(=O)OC23C4=C(C=C(C=C4)O)OC5=C3C=CC(=C5)O
-'CH3(CH2)14CO, Palmitic acid': '[C](CCCCCCCCCCCCCCC)=O'
-'CH3(CH2)8CO, Decanoic acid': '[C](CCCCCCCCC)=O'
-'CH3(CH2)10CO, Dodecanoic acid': '[C](CCCCCCCCCCC)=O'
-'CH3(CH2)12CO, Myristic acid': '[C](CCCCCCCCCCCCC)=O'
-'CH3(CH2)16CO, Octadecanoic acid': '[C](CCCCCCCCCCCCCCCCC)=O'
-'Ahx, 6-aminohexamoic acid': 'NCCCCCC(=O)O'
