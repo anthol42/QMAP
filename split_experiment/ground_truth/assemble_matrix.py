@@ -1,0 +1,31 @@
+import numpy as np
+from glob import glob
+from pathlib import Path
+
+PARTS_PATH = "matrix_parts"
+
+if __name__ == "__main__":
+    # Get all parts
+    parts = glob(f"{PARTS_PATH}/*.npy")
+    parts.sort(key=lambda x: int(Path(x).name.split("-")[0]))
+
+    # Load all parts and concatenate them
+    matrices = []
+    row_ids = []
+    for part in parts:
+        matrix = np.load(part)
+        matrices.append(matrix)
+        with open(f"{PARTS_PATH}/{part.split('.')[0]}.txt", 'r') as f:
+            ids = f.readlines()
+            ids = [id_.strip() for id_ in ids]
+            row_ids.extend(ids)
+    assert len(set(row_ids)) == len(row_ids), "There are duplicate row IDs!"
+    full_matrix = np.concatenate(matrices, axis=0)
+
+    assert len(full_matrix) == len(row_ids), "There is not the same number of rows in the matrix and row IDs!"
+
+    # Save the full matrix and row IDs
+    np.save("identity_matrix.npy", full_matrix)
+    with open("row_ids.txt", 'w') as f:
+        for row_id in row_ids:
+            f.write(f"{row_id}\n")
