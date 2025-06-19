@@ -25,6 +25,8 @@ class TargetBase:
         # Handle exceptions
         if activity_string == '4.5.5':
             activity_string = '4.5-5'
+        elif activity_string == "16=128":
+            activity_string = '16-128'
 
 
         activity_string = activity_string.replace('–', '-').replace('~', '').replace('+', '±')
@@ -71,6 +73,7 @@ class TargetBase:
             return 0., float(activity_string)
         else:
             activity_string = activity_string.replace(' ', '').replace(',', '.')
+            # print(raw_activity_string)
             return float(activity_string), float(activity_string)
     def convert_to_micromolar(self):
         molar_mass = compute_molecular_weight(self.peptide.sequence, self.peptide.nTerminus, self.peptide.cTerminus, self.peptide.unusualAminoAcids)

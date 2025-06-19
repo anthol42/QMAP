@@ -111,4 +111,4 @@ with open(f'{BUILD_PATH}/dataset.json', 'w') as f:
 # This fasta file will be used to compute the Identity matrix
 with open(f'{BUILD_PATH}/dataset.fasta', 'w') as f:
     for sample in dataset_tmp:
-        f.write(f'>{sample["ID"]}\n{sample["Sequence"].upper().replace("O", "X")}\n')
+        f.write(f'>{sample["ID"]}\n{sample["Sequence"].upper()}\n')

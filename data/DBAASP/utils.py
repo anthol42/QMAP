@@ -107,7 +107,10 @@ def parse_hemo_activityMeasureType(name: str):
     :param name: The activityMeasureType string to parse.
     :return: The ratio in percent (e.g. 17 for 17%) or None if it is not a valid activityMeasureType.
     """
-    name = name.replace(" ± ", "±").replace(" ±", "±").replace("± ", "±")  # Normalize the string
+    name = (name.replace(" ± ", "±")
+            .replace(" ±", "±")
+            .replace("± ", "±")
+            .replace('≈', ''))  # Normalize the string
     groups = re.findall(r'(.*?[0-9± ]*) {1,}([a-zA-Z ]*)', name.strip())
     if len(groups) > 1:
         raise RuntimeError(f"Found multiple groups for {name}")
