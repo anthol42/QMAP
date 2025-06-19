@@ -1,6 +1,6 @@
 import argparse
 import os.path
-
+from tqdm import tqdm
 import numpy as np
 from utils import compute_identity
 
@@ -24,9 +24,9 @@ if __name__ == '__main__':
             sequence = line.strip()
             sequences.append((id_, sequence))
 
-    identities = np.full((end_idx - start_idx + 1, len(sequences)), np.nan)
+    identities = np.full((end_idx - start_idx, len(sequences)), np.nan)
     row_ids = []
-    for i, sequence in enumerate(sequences[start_idx:end_idx]):
+    for i, sequence in tqdm(enumerate(sequences[start_idx:end_idx]), total=end_idx - start_idx):
         id_, seq = sequence
         for j, target_sequence in enumerate(sequences):
             target_id, target_seq = target_sequence
@@ -47,3 +47,4 @@ if __name__ == '__main__':
         for row_id in row_ids:
             f.write(f"{row_id}\n")
 
+# Total of 19038 sequences in the dataset
