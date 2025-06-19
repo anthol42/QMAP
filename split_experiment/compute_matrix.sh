@@ -3,7 +3,7 @@
 #SBATCH --array=0-99
 #SBATCH --output=logs/compute_identity_%A_%a.out
 #SBATCH --error=logs/compute_identity_%A_%a.err
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 #SBATCH --mem=1G
 #SBATCH --cpus-per-task=1
 
@@ -19,4 +19,4 @@ else
 fi
 
 # Run the command
-uv run ground_truth/compute_identity.py --input=../data/build/dataset.fasta --input=${START}-${END}
+uv run ground_truth/compute_identity.py --input=../data/build/dataset.fasta --id_range=${START}-${END}

@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     identities = np.full((end_idx - start_idx, len(sequences)), np.nan)
     row_ids = []
-    for i, sequence in tqdm(enumerate(sequences[start_idx:end_idx]), total=end_idx - start_idx):
+    for i, sequence in tqdm(enumerate(sequences[start_idx:end_idx]), total=end_idx - start_idx, disable=True):
         id_, seq = sequence
         for j, target_sequence in enumerate(sequences):
             target_id, target_seq = target_sequence
