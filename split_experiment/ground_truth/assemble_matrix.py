@@ -1,8 +1,11 @@
 import numpy as np
 from glob import glob
 from pathlib import Path
+import argparse
+parser = argparse.ArgumentParser()
 
-PARTS_PATH = "matrix_parts"
+parser.add_argument('--input', type=str, required=True, help='fasta file')
+PARTS_PATH = parser.parse_args().input
 
 if __name__ == "__main__":
     # Get all parts
@@ -15,12 +18,13 @@ if __name__ == "__main__":
     for part in parts:
         matrix = np.load(part)
         matrices.append(matrix)
-        with open(f"{PARTS_PATH}/{part.split('.')[0]}.txt", 'r') as f:
+        with open(f"{part.split('.')[0]}.txt", 'r') as f:
             ids = f.readlines()
             ids = [id_.strip() for id_ in ids]
             row_ids.extend(ids)
     assert len(set(row_ids)) == len(row_ids), "There are duplicate row IDs!"
     full_matrix = np.concatenate(matrices, axis=0)
+    full_matrix = full_matrix[:full_matrix.shape[1]]
 
     assert len(full_matrix) == len(row_ids), "There is not the same number of rows in the matrix and row IDs!"
 
