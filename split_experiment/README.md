@@ -39,9 +39,10 @@ between all sequences.
 Then, we will build a graph from it and apply the community detection algorithm to split the dataset.
 
 ## Get started
-First, you need to fetch and build the DBAASP dataset. You can do so by following 
+First, you need to fetch and build the DBAASP dataset. You can do so by following the 
+`Download and build the FASTA dataset` instructions in the `data/README.md` file.
 
-To run the experiments, you must first create the global identity matrix that will be used to evaluate the splitting 
+Next, you must first create the global identity matrix that will be used to evaluate the splitting 
 performances of each method. It is highly recommended to parallelize this step, as it is very costly in terms of 
 compute and the algorithm is single-threaded. To go so, you can run the *******TODO*********
 ## Results

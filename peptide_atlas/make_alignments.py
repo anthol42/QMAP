@@ -17,15 +17,20 @@ if __name__ == "__main__":
     dataset_nodes = np.array(list(dataset.keys()))
 
     alignments = np.full((args.n, 3), np.nan, dtype=np.float64)
-    for i in tqdm(range(args.n), disable=True):
+    for i in tqdm(range(args.n), disable=False):
         src = np.random.choice(dataset_nodes)
         dst = np.random.choice(dataset_nodes)
         while src == dst:
             dst = np.random.choice(dataset_nodes)
 
-        src_seq = dataset[src]
-        dst_seq = dataset[dst]
-        identity = compute_identity(src_seq, dst_seq)
+        # Replace 'U' with 'X' to avoid errors in identity computation.
+        # In addition, remove spaces.
+        src_seq = dataset[src].replace("U", "X").replace(" ", "")
+        dst_seq = dataset[dst].replace("U", "X").replace(" ", "")
+        try:
+            identity = compute_identity(src_seq, dst_seq)
+        except ValueError:
+            print(src, dst)
         alignments[i] = [src, dst, identity]
 
     if np.isnan(alignments).any():
