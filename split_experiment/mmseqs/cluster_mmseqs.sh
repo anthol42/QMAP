@@ -1,7 +1,7 @@
-INPUT="../.cache/mmseqs/dataset.fasta"
-DB="../.cache/mmseqs/peptidesDB"
-CLUSTERS="../.cache/mmseqs/clusters"
-TMP="../.cache/mmseqs/tmp"
+INPUT=".cache/mmseqs/dataset.fasta"
+DB=".cache/mmseqs/peptidesDB"
+CLUSTERS=".cache/mmseqs/clusters"
+TMP=".cache/mmseqs/tmp"
 
 # Create database
 mmseqs createdb "$INPUT" "$DB"
@@ -15,4 +15,4 @@ mmseqs linclust "$DB" "$CLUSTERS" "$TMP" \
     --comp-bias-corr 0
 
 # Export representative sequences of clusters
-mmseqs createtsv "$DB" "$DB" "$CLUSTERS" "../.cache/mmseqs/clusters.tsv"
+mmseqs createtsv "$DB" "$DB" "$CLUSTERS" ".cache/mmseqs/clusters.tsv"

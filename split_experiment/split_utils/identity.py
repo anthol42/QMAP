@@ -39,15 +39,12 @@ def compute_identity_stats(train_ids, test_ids, identity_calculator):
     :param identity_calculator: Identity calculator.
     :return: An array containing the highest identity between each test samples and all train samples.
     """
-    identities = np.full(len(test_ids), np.nan)
+    identities = np.full((len(test_ids), len(train_ids)), np.nan)
     true_train_set = np.ones(len(train_ids), dtype=bool)
     for i, test_id in enumerate(progress(test_ids)):
-        max_identity = 0.0
         for j, train_id in enumerate(train_ids):
             identity = identity_calculator.align_by_id(train_id, test_id)
-            if identity > max_identity:
-                max_identity = identity
             if identity > 0.5:
                 true_train_set[j] = False
-        identities[i] = max_identity
+            identities[i, j] = identity
     return identities, true_train_set
