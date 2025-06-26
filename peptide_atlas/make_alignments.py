@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True)
 parser.add_argument("--output", type=str, required=True)
 parser.add_argument("--n", type=int, default=2_500_000)
-
+parser.add_argument("--progress", action="store_true", default=False)
 if __name__ == "__main__":
     args = parser.parse_args()
 
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     dataset_nodes = np.array(list(dataset.keys()))
 
     alignments = np.full((args.n, 3), np.nan, dtype=np.float64)
-    for i in tqdm(range(args.n), disable=False):
+    for i in tqdm(range(args.n), disable=not args.progress):
         src = np.random.choice(dataset_nodes)
         dst = np.random.choice(dataset_nodes)
         while src == dst:
