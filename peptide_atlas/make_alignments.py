@@ -27,10 +27,7 @@ if __name__ == "__main__":
         # In addition, remove spaces.
         src_seq = dataset[src].replace("U", "X").replace(" ", "")
         dst_seq = dataset[dst].replace("U", "X").replace(" ", "")
-        try:
-            identity = compute_identity(src_seq, dst_seq)
-        except ValueError:
-            print(src, dst)
+        identity = compute_identity(src_seq, dst_seq)
         alignments[i] = [src, dst, identity]
 
     if np.isnan(alignments).any():
