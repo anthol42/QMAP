@@ -4,7 +4,7 @@ from pathlib import Path
 import argparse
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--input', type=str, required=True, help='fasta file')
+parser.add_argument('--input', type=str, required=True, help='The directory containing the parts of the global matrix')
 PARTS_PATH = parser.parse_args().input
 
 if __name__ == "__main__":

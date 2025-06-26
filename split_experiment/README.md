@@ -44,5 +44,35 @@ First, you need to fetch and build the DBAASP dataset. You can do so by followin
 
 Next, you must first create the global identity matrix that will be used to evaluate the splitting 
 performances of each method. It is highly recommended to parallelize this step, as it is very costly in terms of 
-compute and the algorithm is single-threaded. To go so, you can run the *******TODO*********
+compute and the algorithm is single-threaded. To go so, you can run the `ground_truth/compute_identity` script with the
+range of sequences to compute in this call. For example:
+```shell
+uv run ground_truth/compute_identity.py --input=../data/build/dataset.fasta --id_range=0-200
+uv run ground_truth/compute_identity.py --input=../data/build/dataset.fasta --id_range=200-400
+...
+```
+Do this for all sequences up to 19038.
+
+Once all script are run, you can assemble the global identity matrix and move it to the .cache directory by running:
+```shell
+uv run ground_truth/assemble_identity_matrix.py --input=matrix_parts
+mkdir .cache
+mv identity_matrix.npy .cache/identity_matrix.npy
+mv row_ids.txt .cache/row_ids.txt
+```
+
+You are all set to run the experiments!
+
+Now, you need to install mmseqs2 and cd-hit. On mac, I installed mmseqs2 using bio-conda and cd-hit by building it from 
+source.
+
+Then, you can run the notebooks in the different directories to explore the different methods. For each method, two 
+notebooks where created: one for sequences between 5 and 50 (which is common in most of the papers) and one for all 
+sequence lengths (which is more realistic). 
+
 ## Results
+We can see that the community detection algorithm is much better than the clustering methods. It is not perfect, however 
+it is close to perfection. More than 98% of the train sequences have an identity under 50% with the test sequences. 
+This means that we can manually remove these sequences and get a perfect split without loosing too many sequences.
+
+The same cannot be said for the clustering methods.
