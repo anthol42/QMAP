@@ -146,14 +146,14 @@ def make_dataset():
         all_sequences.update(sequences.values())
 
     # Filter sequences such that they are smaller than 50 amino acids
-    all_sequences = {seq for seq in all_sequences if len(seq) <= 50}
+    all_sequences = {seq for seq in all_sequences if len(seq) <= 100}
 
     # Write to a new fasta file
     with open('.cache/peptide_atlas.fasta', 'w') as f:
         for i, sequence in enumerate(all_sequences):
             f.write(f'>seq_{i}\n{sequence}\n')
 
-    print("Total dataset size:", len(all_sequences))
+    print("Total dataset size:", len(all_sequences)) # 3569085
 if __name__ == '__main__':
     builds = fetch_list()[["Build Name", "Peptide Sequences"]]
     # Keep only most recents
