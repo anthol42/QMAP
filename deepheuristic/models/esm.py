@@ -4,6 +4,7 @@ from typing import Iterable, Optional
 from pyutils import ConfigFile
 from utils.esm_alphabet import ESMAlphabet
 from .modules import ESM1bLayerNorm, TransformerLayer
+import torch.nn.functional as F
 
 class DropScaler(nn.Module):
     def __init__(self, ratio: float = 0.5):
@@ -36,7 +37,7 @@ class FC_layer(nn.Module):
 
 class FC_projector(nn.Module):
     def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, dropout: float,
-                 use_clf_token: bool = False):
+                 use_clf_token: bool = False, sigmoid: bool = True):
         super().__init__()
         if depth == 0:
             self.layers = nn.Sequential(
@@ -52,9 +53,10 @@ class FC_projector(nn.Module):
                 FC_layer(embed_dim, latent_dim, dropout=dropout),
                 *[FC_layer(latent_dim, latent_dim, dropout) for _ in range(depth - 2)],
                 FC_layer(latent_dim, latent_dim, dropout=0.),
-                nn.Linear(latent_dim, out_features)
+                nn.Linear(latent_dim, out_features),
             )
         self.use_clf_token = use_clf_token
+        self.sigmoid = sigmoid
 
     def forward(self, x):
         # x: shape(B, T, D)
@@ -62,7 +64,11 @@ class FC_projector(nn.Module):
             x = x[:, 0]
         else:
             x = x[:, 1:].mean(dim=1)
-        return self.layers(x)
+        out = self.layers(x)
+        if self.sigmoid:
+            return torch.sigmoid(out)
+        else:
+            return out
 
 class ESMEncoder(nn.Module):
     def __init__(
@@ -78,7 +84,8 @@ class ESMEncoder(nn.Module):
         head_dim: int = 1280,
         head_depth: int = 0, # 0 = Linear projection
         proj_dim: int = 8,
-        use_clf_token: bool = False
+        use_clf_token: bool = False,
+        sigmoid: bool = True
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -98,6 +105,7 @@ class ESMEncoder(nn.Module):
         self.head_dropout = head_dropout
         self.proj_dim = proj_dim
         self.use_clf_token = use_clf_token
+        self.sigmoid = sigmoid
         self._init_submodules()
 
     def _init_submodules(self):
@@ -126,7 +134,7 @@ class ESMEncoder(nn.Module):
 
         self.emb_layer_norm_after = ESM1bLayerNorm(self.embed_dim)
         self.head = FC_projector(self.head_depth, self.embed_dim, self.head_dim, self.proj_dim,
-                                      self.head_dropout, use_clf_token=self.use_clf_token)
+                                      self.head_dropout, use_clf_token=self.use_clf_token, sigmoid=self.sigmoid)
     def forward(self, tokens):
         assert tokens.ndim == 2
         padding_mask = tokens.eq(self.padding_idx)  # B, T
