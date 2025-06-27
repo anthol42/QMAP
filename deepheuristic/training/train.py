@@ -15,26 +15,32 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
     for m in metrics.values():
         m.reset()
     prg: progress
-    for i, prg, (X, y) in progress(dataloader, type="dl").enum().ref():
+    for i, prg, (s1_str, s2_str, seq1, seq2, label) in progress(dataloader, type="dl").enum().ref():
         if epoch == 0 and i == 0 and sample_inputs is not None:
             print()
             log(f"Saving sample inputs at {sample_inputs}")
-            torch.save((X, y), sample_inputs)
+            torch.save((s1_str, s2_str, seq1, seq2, label), sample_inputs)
         # Setup - Copying to gpu if available
-        X, y = X.to(device), y.to(device)
+        seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
         # for i in range(10_000):
         optimizer.zero_grad()
         # Training with possibility of mixed precision
         if scaler:
             with torch.autocast(device_type=str(device), dtype=torch.float16):
-                pred = model(X)
-                loss = criterion(pred, y)
+                pred1 = model(seq1).unsqueeze(1) # Shape(B, 1, E)
+                pred2 = model(seq2).unsqueeze(2) # Shape(B, E, 1)
+                # Dot product of the vectors to get the predicted labels
+                pred = (pred1 @ pred2).squeeze(-1) # Shape(B, 1, 1) => Shape(B, 1)
+                loss = criterion(pred, label) # MSE loss between predicted and true labels
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
-            pred = model(X)
-            loss = criterion(pred, y)
+            pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
+            pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
+            # Dot product of the vectors to get the predicted labels
+            pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
+            loss = criterion(pred, label)  # MSE loss between predicted and true labels
             loss.backward()
             optimizer.step()
 
@@ -45,7 +51,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
 
         # Calculate metrics
         metr = {}
-        targets = y.detach().cpu()
+        targets = label.detach().cpu()
         pred = pred.detach().cpu()
         for metric_name, metric_fn in metrics.items():
             # print(targets.shape, pred.shape)
@@ -83,16 +89,19 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
     for m in metrics.values():
         m.reset()
 
-    for X, y in dataloader:
+    for _, _, seq1, seq2, label in dataloader:
         # Setup - Copying to gpu if available
-        X, y = X.to(device), y.to(device)
+        seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
 
         # Evaluating
-        pred = model(X)
-        loss = criterion(pred, y)
+        pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
+        pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
+        # Dot product of the vectors to get the predicted labels
+        pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
+        loss = criterion(pred, label)  # MSE loss between predicted and true labels
 
         # Calculate metrics
-        targets = y.detach().cpu()
+        targets = label.detach().cpu()
         pred = pred.detach().cpu()
         if metrics is not None:
             for metric_name, metric_fn in metrics.items():
@@ -156,16 +165,19 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
         m.reset()
 
     output_rate = 25 if str(device) == 'cuda' else 1
-    for prg, (X, y) in progress(dataloader, type="dl", desc="Evaluating", end="\n").ref():
+    for prg, (_, _, seq1, seq2, label) in progress(dataloader, type="dl", desc="Evaluating", end="\n").ref():
         # Setup - Copying to gpu if available
-        X, y = X.to(device), y.to(device)
+        seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
 
         # Evaluating
-        pred = model(X)
-        loss = criterion(pred, y)
+        pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
+        pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
+        # Dot product of the vectors to get the predicted labels
+        pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
+        loss = criterion(pred, label)  # MSE loss between predicted and true labels
 
         # Calculate metrics
-        targets = y.detach().cpu()
+        targets = label.detach().cpu()
         pred = pred.detach().cpu()
         for metric_name, metric_fn in metrics.items():
             metric_fn(pred, targets)

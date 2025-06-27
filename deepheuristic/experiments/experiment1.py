@@ -1,7 +1,7 @@
 import torch
 import os
 from data.dataloader import make_dataloader
-from models import Classifier
+from models import ESMEncoder
 from optimizers.optimizer import make_optimizer
 from training.train import train, evaluate
 from losses.loss import make_loss
@@ -13,13 +13,14 @@ from deepboard.resultTable import ResultTable
 import utils
 from pyutils import Colors, ConfigFile
 from utils.bin import *
-from torchmetrics import Accuracy
+from torchmetrics import MeanAbsoluteError, PearsonCorrCoef
 from torchinfo import summary
 # To verify if the config has the good format
 from configs.formats import config_format
 
 metrics = {
-    "accuracy": Accuracy(task="multiclass", num_classes=10),
+    "mae": MeanAbsoluteError(),
+    "pcc": PearsonCorrCoef(),
 }
 
 

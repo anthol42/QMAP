@@ -28,7 +28,7 @@ parser.add_argument("--comment", required=False, type=str, default=None)
 parser.add_argument("--sample_inputs", action="store_true", default=False)
 parser.add_argument("--noscaler", action="store_true", default=False)
 parser.add_argument("--cpu", action="store_true", default=False) # Train on cpu only
-parser.add_argument("--watch", required=False, type=str, default="accuracy")
+parser.add_argument("--watch", required=False, type=str, default="loss")
 parser.add_argument("--verbose", required=False, type=int, default=3)  # 3: all # 2: logs # 1: errors and warnings only # 0: nothing
 
 # ######################################################################################################################
