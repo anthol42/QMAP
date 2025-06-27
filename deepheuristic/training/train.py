@@ -128,7 +128,7 @@ def train(model, optimizer, train_loader, val_loader, criterion, num_epochs, dev
           verbose: int = 3):
     State.global_step = 0
     # Checkpoints
-    m, b = ("MIN", float("inf")) if watch == "loss" else ("MAX", float('-inf'))
+    m, b = ("MIN", float("inf")) if watch == "loss" or "MAE" else ("MAX", float('-inf'))
     save_best_model = utils.SaveBestModel(
         config["model"]["model_dir"], metric_name=f"validation {watch}", model_name=config["model"]["name"],
         best_metric_val=b, evaluation_method=m, verbose=verbose == 3)

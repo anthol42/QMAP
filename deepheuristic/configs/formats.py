@@ -26,11 +26,9 @@ config_format = ConfigFormat({
             "attention_dropout": Default(float, 0.),
             "layer_dropout": Default(float, 0.),
             "head_dropout": float,
-            "head_dim": int,
-            "head_depth": int,
+            "head_depth": Default(int, 0), # We default to a Linear projection
             "proj_dim": int,
             "use_clf_token": Default(bool, True),
-            "sigmoid": bool # True if loss is MSE, False if BCE because we will use BCE with logits
         })
     ),
 })

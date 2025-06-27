@@ -1,8 +1,7 @@
 from torch.optim.optimizer import Optimizer
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from pyutils import ConfigFile
-def make_scheduler(optimizer: Optimizer, config: ConfigFile):
+def make_scheduler(optimizer: Optimizer, config: ConfigFile, num_steps: int):
 
-    return CosineAnnealingWarmRestarts(optimizer, config["scheduler"]["n_iter_restart"],
-                                       config["scheduler"]["factor_increase"], eta_min=config["scheduler"]["min_lr"])
+    return CosineAnnealingLR(optimizer, eta_min=config["scheduler"]["min_lr"], T_max=num_steps)
 

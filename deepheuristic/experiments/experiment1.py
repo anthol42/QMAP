@@ -9,6 +9,7 @@ from schedulers.scheduler import make_scheduler
 import sys
 import shutil
 from utils import State, get_profile
+from utils.esm_alphabet import ESMAlphabet
 from deepboard.resultTable import ResultTable
 import utils
 from pyutils import Colors, ConfigFile
@@ -35,9 +36,9 @@ def experiment1(args, kwargs):
 
     # Loading the config file
     # We select the config for the CNN model and the local profile. You can change according to your setup
-    config = ConfigFile(args.config, config_format.get(option="ESM"), verify_path=True, profiles=["local", "remote"])
+    config = ConfigFile(args.config, config_format.get(option="ESM"), verify_path=True, profiles=["local", "hpc"])
 
-    config.change_profile(get_profile(device))
+    config.change_profile(get_profile())
     config.override_config(kwargs)
     hyper.update(kwargs)
 
@@ -51,32 +52,57 @@ def experiment1(args, kwargs):
 
     # Add hyperparameters
     resultSocket.add_hparams(
-        lr=config["training"]["learning_rate"],
+        lr=config["training"]["lr"],
+        min_lr=config["training"]["min_lr"],
         wd=config["training"]["weight_decay"],
-        min_lr=config["scheduler"]["min_lr"],
-        dropout2d=config["model"]["dropout2d"],
-        dropout=config["model"]["dropout"]
+        loss=config["training"]["loss"],
+        optimizer=config["training"]["optimizer"],
+        head_dropout= config["model"]["head_dropout"],
+        proj_dim= config["model"]["proj_dim"],
     )
     run_id = resultSocket.run_id
 
     config["model"]["model_dir"] = f'{config["model"]["model_dir"]}/{run_id}'
 
     State.resultSocket = resultSocket
+
+    alphabet = ESMAlphabet()
     # Loading the data
-    train_loader, val_loader, test_loader = make_dataloader(config=config)
+    train_loader, val_loader, test_loader = make_dataloader(config=config, alphabet=alphabet)
     log("Data loaded successfully!")
 
     # Loading the model
-    model = Classifier(config)
+    model = ESMEncoder(
+        alphabet=alphabet,
+        num_layers = config["model"]["num_layers"],
+        embed_dim = config["model"]["embed_dim"],
+        attention_heads = config["model"]["attention_heads"],
+        token_dropout = config["model"]["token_dropout"],
+        attention_dropout = config["model"]["attention_dropout"],
+        layer_dropout = config["model"]["layer_dropout"],
+        head_dropout = config["model"]["head_dropout"],
+        head_dim = config["model"]["embed_dim"],
+        head_depth = config["model"]["head_depth"],
+        proj_dim = config["model"]["proj_dim"],
+        use_clf_token = config["model"]["use_clf_token"],
+        sigmoid = config["training"]["loss"] == "MSE" # If MSE loss, we use sigmoid activation
+    )
+    # TODO: Load pretrained weights if available
     model.to(device)
     if args.verbose >= 3:
-        summary(model, input_size=(config["data"]["batch_size"], 1, 28, 28), device=device)
+        B = config["training"]["batch_size"]
+        L = 100 # Max length of the sequence
+        summary(model, input_data=(torch.randint(0, 20, (B, L))), device=device)
     log("Model loaded successfully!")
 
     # Loading optimizer, loss and scheduler
-    optimizer = make_optimizer(model.parameters(), config)
-    loss = make_loss(config)
-    scheduler = make_scheduler(optimizer, config)
+    optimizer = make_optimizer(model.parameters(), config["training"]["optimizer"], lr=config["training"]["lr"],
+                               weight_decay=config["training"]["weight_decay"])
+    if config["training"]["loss"] not in ["MSE", "BCE"]:
+        raise ValueError(f"Loss {config['training']['loss']} is not supported. Use 'MSE' or 'BCE'.")
+    loss = torch.nn.MSELoss() if config["training"]["loss"] == "MSE" else torch.nn.BCEWithLogitsLoss()
+
+    scheduler = make_scheduler(optimizer, config, num_steps=config["training"]["num_epochs"] * len(train_loader))
 
     # Training
     # Prepare the path of input sampling if flag is set
@@ -86,25 +112,21 @@ def experiment1(args, kwargs):
         sample_inputs = None
     log("Begining training...")
     log(f"Watching: {args.watch}")
-    try:
-        train(
-            model=model,
-            optimizer=optimizer,
-            train_loader=train_loader,
-            val_loader=val_loader,
-            criterion=loss,
-            num_epochs=config["training"]["num_epochs"],
-            device=device,
-            scheduler=scheduler,
-            config=config,
-            metrics=metrics,
-            watch=args.watch,
-            sample_inputs=sample_inputs,
-            verbose=args.verbose
-        )
-    except KeyboardInterrupt:
-        log("Keyboard Interrupt detected. Ending training...", start="\n", end="\n\n")
-
+    train(
+        model=model,
+        optimizer=optimizer,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        criterion=loss,
+        num_epochs=config["training"]["num_epochs"],
+        device=device,
+        scheduler=scheduler,
+        config=config,
+        metrics=metrics,
+        watch=args.watch,
+        sample_inputs=sample_inputs,
+        verbose=args.verbose
+    )
     log("Training done!")
 
     # Load best model
@@ -132,7 +154,7 @@ def experiment1(args, kwargs):
         warn(config.get_warnings())
 
     # Save results
-    resultSocket.write_result(accuracy=results["accuracy"].item(), crossEntropy=results["loss"].item())
+    resultSocket.write_result(**{name: result.item for name, result in results.items()})
 
 
 

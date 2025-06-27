@@ -16,7 +16,4 @@ model:
   embed_dim: 320
   attention_heads: 20
   head_dropout: 0
-  head_dim: 320
-  head_depth: 0 # 0 for linear projection, # >0 for hidden layer
   proj_dim: 8
-  sigmoid: true

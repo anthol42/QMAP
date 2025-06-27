@@ -159,15 +159,15 @@ def format_metrics(val: bool = False, **metrics):
     else:
         return '  '.join(f"{name}: {counter.compute():.4f}" for name, counter in metrics.items())
 
-def get_profile(device):
+def get_profile():
     # If you want to change profile based on the machine
     hostname = socket.gethostname()
 
     # For the purpose of the example, we base the profile on the compute capabilities (cpu or gpu)
-    if device == "cpu":
-        return "cpu"
+    if "MBP" in hostname:
+        return "local"
     else:
-        return "gpu"
+        return "hpc"
 
 def get_experiment_name(context_name: str):
     return context_name.split(".")[-1].capitalize()
