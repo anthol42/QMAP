@@ -35,7 +35,7 @@ def experiment1(args, kwargs):
 
     # Loading the config file
     # We select the config for the CNN model and the local profile. You can change according to your setup
-    config = ConfigFile(args.config, config_format.get(option="CNN"), verify_path=True, profiles=["cpu", "gpu"])
+    config = ConfigFile(args.config, config_format.get(option="ESM"), verify_path=True, profiles=["local", "remote"])
 
     config.change_profile(get_profile(device))
     config.override_config(kwargs)
