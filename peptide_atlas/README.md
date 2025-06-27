@@ -10,11 +10,15 @@ uv sync
 ```bash
 uv run download.py
 ```
-3. Split the dataset into train, validation, and test sets by running the `split_dataset.py` script:
+3. Cluster the sequences using CD-HIT by running the `cluster_cdhit.sh` script:
+```bash
+./cluster_cdhit.sh
+```
+4. Split the dataset into train, validation, and test sets by running the `split_dataset.py` script:
 ```bash
 uv run split_dataset.py
 ```
-4. The dataset splits will be saved in the build directory. Next, you need to annotate the dataset. This task is 
+5. The dataset splits will be saved in the build directory. Next, you need to annotate the dataset. This task is 
 compute intensive and may take a while to complete. To make things faster, we suggest to split the computation across 
 multiple processes or even compute nodes. To build the original dataset, the following process were run:
 - Train: 100 processes of 2.5M alignments each
@@ -28,7 +32,7 @@ uv run make_alignments.py --input=build/train.fasta --output=.cache/train_parts/
 Note that the sequences to annotate (align) are sampled randomly. Since the combination space is much larger than the 
 sampled alignments, we do not need to check if the alignments are unique. Thus, each process can run independently and 
 the results can be merged later.
-5. After all processes are done, you can merge the results by running the `merge_alignments.py` script:
+6. After all processes are done, you can merge the results by running the `merge_alignments.py` script:
 ```bash
 uv run merge_alignments.py --dir=.cache/val_parts --output=build/val.npy
 uv run merge_alignments.py --dir=.cache/test_parts --output=build/test.npy
