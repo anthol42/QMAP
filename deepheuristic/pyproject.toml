@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "antho-utils>=0.1.0",
-    "deepboard",
+    "deepboard[full]>=0.2.2",
     "fair-esm>=2.0.0",
     "matplotlib>=3.10.3",
     "numpy<2.0.0",
@@ -19,6 +19,3 @@ dependencies = [
     "torchmetrics>=1.7.2",
     "torchvision>=0.22.1",
 ]
-
-[tool.uv.sources]
-deepboard = { path = "../../deepboard", editable = true }
