@@ -33,5 +33,5 @@ def make_dataloader(config, alphabet: ESMAlphabet):
                             persistent_workers=config["data"]["num_workers"] > 0,
                             batch_size=config["data"]["batch_size"],
                             shuffle=False)
-    return train_dl, val_dl, test_dl, alphabet
+    return train_dl, val_dl, test_dl
 

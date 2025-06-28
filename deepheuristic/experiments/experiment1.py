@@ -4,7 +4,7 @@ from data.dataloader import make_dataloader
 from models import ESMEncoder
 from optimizers.optimizer import make_optimizer
 from training.train import train, evaluate
-from losses.loss import make_loss
+from losses import Criterion
 from schedulers.scheduler import make_scheduler
 import sys
 import shutil
@@ -84,23 +84,24 @@ def experiment1(args, kwargs):
         head_dim = config["model"]["embed_dim"],
         head_depth = config["model"]["head_depth"],
         proj_dim = config["model"]["proj_dim"],
-        use_clf_token = config["model"]["use_clf_token"],
-        sigmoid = config["training"]["loss"] == "MSE" # If MSE loss, we use sigmoid activation
+        use_clf_token = config["model"]["use_clf_token"]
     )
-    # TODO: Load pretrained weights if available
+    size = config["model"]["name"].split("_")[-1]
+    model.backbone.load_state_dict(
+        utils.get_esm_weights(size, config["model"]["weights_path"])
+    )
     model.to(device)
     if args.verbose >= 3:
-        B = config["training"]["batch_size"]
+        B = config["data"]["batch_size"]
         L = 100 # Max length of the sequence
         summary(model, input_data=(torch.randint(0, 20, (B, L))), device=device)
     log("Model loaded successfully!")
 
     # Loading optimizer, loss and scheduler
-    optimizer = make_optimizer(model.parameters(), config["training"]["optimizer"], lr=config["training"]["lr"],
+    loss = Criterion(loss_type=config["training"]["loss"])
+    loss.to(device)
+    optimizer = make_optimizer(list(model.parameters()) + list(loss.parameters()), config["training"]["optimizer"], lr=config["training"]["lr"],
                                weight_decay=config["training"]["weight_decay"])
-    if config["training"]["loss"] not in ["MSE", "BCE"]:
-        raise ValueError(f"Loss {config['training']['loss']} is not supported. Use 'MSE' or 'BCE'.")
-    loss = torch.nn.MSELoss() if config["training"]["loss"] == "MSE" else torch.nn.BCEWithLogitsLoss()
 
     scheduler = make_scheduler(optimizer, config, num_steps=config["training"]["num_epochs"] * len(train_loader))
 

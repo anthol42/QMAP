@@ -39,7 +39,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
             pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
             pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
             # Dot product of the vectors to get the predicted labels
-            pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
+            pred = (pred1 @ pred2).squeeze(-1) # Shape(B, 1, 1) => Shape(B, 1)
             loss = criterion(pred, label)  # MSE loss between predicted and true labels
             loss.backward()
             optimizer.step()
@@ -54,8 +54,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
         targets = label.detach().cpu()
         pred = pred.detach().cpu()
         for metric_name, metric_fn in metrics.items():
-            # print(targets.shape, pred.shape)
-            metr[metric_name] = metric_fn(pred, targets)
+            metr[metric_name] = metric_fn(targets, pred)
 
             # print(f"{i} - Loss: {loss.item()}; {','.join(f'{metric}: {fn(targets, pred)}' for metric, fn in metrics.items())}")
         metr["loss"] = loss.item()

@@ -37,7 +37,7 @@ class FC_layer(nn.Module):
 
 class FC_projector(nn.Module):
     def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, dropout: float,
-                 use_clf_token: bool = False, sigmoid: bool = True):
+                 use_clf_token: bool = False):
         super().__init__()
         if depth == 0:
             self.layers = nn.Sequential(
@@ -56,7 +56,14 @@ class FC_projector(nn.Module):
                 nn.Linear(latent_dim, out_features),
             )
         self.use_clf_token = use_clf_token
-        self.sigmoid = sigmoid
+        self._init()
+
+    def _init(self):
+        pass
+        # layer = self.layers[-1]
+        # nn.init.xavier_uniform_(layer.weight, gain=0.5)
+        # if layer.bias is not None:
+        #     nn.init.constant_(layer.bias, 0.)
 
     def forward(self, x):
         # x: shape(B, T, D)
@@ -64,28 +71,17 @@ class FC_projector(nn.Module):
             x = x[:, 0]
         else:
             x = x[:, 1:].mean(dim=1)
-        out = self.layers(x)
-        if self.sigmoid:
-            return torch.sigmoid(out)
-        else:
-            return out
-
-class ESMEncoder(nn.Module):
+        return self.layers(x)
+class ESM(nn.Module):
     def __init__(
         self,
-        alphabet: ESMAlphabet = ESMAlphabet(),
-        num_layers: int = 33,
-        embed_dim: int = 1280,
-        attention_heads: int = 20,
-        token_dropout: bool = True,
-        attention_dropout: float = 0.,
-        layer_dropout: float = 0.,
-        head_dropout: float = 0.1,
-        head_dim: int = 1280,
-        head_depth: int = 0, # 0 = Linear projection
-        proj_dim: int = 8,
-        use_clf_token: bool = False,
-        sigmoid: bool = True
+        alphabet: ESMAlphabet,
+        num_layers: int,
+        embed_dim: int,
+        attention_heads: int,
+        token_dropout: bool,
+        attention_dropout: float,
+        layer_dropout: float
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -100,12 +96,6 @@ class ESMEncoder(nn.Module):
         self.token_dropout = token_dropout
         self.attention_dropout = attention_dropout
         self.layer_dropout = layer_dropout
-        self.head_dim = head_dim
-        self.head_depth = head_depth
-        self.head_dropout = head_dropout
-        self.proj_dim = proj_dim
-        self.use_clf_token = use_clf_token
-        self.sigmoid = sigmoid
         self._init_submodules()
 
     def _init_submodules(self):
@@ -133,8 +123,7 @@ class ESMEncoder(nn.Module):
         )
 
         self.emb_layer_norm_after = ESM1bLayerNorm(self.embed_dim)
-        self.head = FC_projector(self.head_depth, self.embed_dim, self.head_dim, self.proj_dim,
-                                      self.head_dropout, use_clf_token=self.use_clf_token, sigmoid=self.sigmoid)
+
     def forward(self, tokens):
         assert tokens.ndim == 2
         padding_mask = tokens.eq(self.padding_idx)  # B, T
@@ -167,34 +156,73 @@ class ESMEncoder(nn.Module):
 
         x = self.emb_layer_norm_after(x)
         x = x.transpose(0, 1)  # (T, B, E) => (B, T, E)
+        return x
 
-        emb = self.head(x)
+class ESMEncoder(nn.Module):
+    def __init__(
+        self,
+        alphabet: ESMAlphabet = ESMAlphabet(),
+        num_layers: int = 33,
+        embed_dim: int = 1280,
+        attention_heads: int = 20,
+        token_dropout: bool = True,
+        attention_dropout: float = 0.,
+        layer_dropout: float = 0.,
+        head_dropout: float = 0.1,
+        head_dim: int = 1280,
+        head_depth: int = 0, # 0 = Linear projection
+        proj_dim: int = 8,
+        use_clf_token: bool = False
+    ):
+        super().__init__()
+        self.backbone = ESM(
+            alphabet=alphabet,
+            num_layers=num_layers,
+            embed_dim=embed_dim,
+            attention_heads=attention_heads,
+            token_dropout=token_dropout,
+            attention_dropout=attention_dropout,
+            layer_dropout=layer_dropout
+
+        )
+        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim,
+                                      head_dropout, use_clf_token=use_clf_token)
+        self.init_params = dict(
+            num_layers=num_layers,
+            embed_dim=embed_dim,
+            attention_heads=attention_heads,
+            token_dropout=token_dropout,
+            attention_dropout=attention_dropout,
+            layer_dropout=layer_dropout,
+            head_dropout=head_dropout,
+            head_dim=head_dim,
+            head_depth=head_depth,
+            proj_dim=proj_dim,
+            use_clf_token=use_clf_token
+        )
+    def forward(self, tokens):
+        z = self.backbone(tokens)  # Shape (B, T, E)
+
+        emb = self.head(z)
+
+        # Normalize the embeddings
+        emb = torch.nn.functional.normalize(emb, p=2, dim=1)
         return emb
 
     @classmethod
-    def load(cls, frm: str):
+    def Load(cls, frm: str):
         data = torch.load(frm)
-        proj_keys = {k for k in data['state_dict'].keys() if k.startswith("projector")}
-
-        if len(proj_keys) == 0:
-            print("Projector is not in the weights.  This means that its weights will be initialized randomly")
-            model = cls(**data['params'])
-            model.load_state_dict(data['state_dict'], strict=False)
-        else:
-            print("Loading custom weights: projector is in the weights")
-            model = cls(**data['params'])
-            model.load_state_dict(data['state_dict'])
-
+        params = data['params']
+        params["alphabet"] = ESMAlphabet()  # Ensure alphabet is set
+        model = cls(**params)
+        model.load_state_dict(data['state_dict'])
         return model
 
 
     def save(self, to: str):
         data = {
             'state_dict': self.state_dict(),
-            'params': dict(num_layers=self.num_layers,
-                           embed_dim=self.embed_dim,
-                           attention_heads=self.attention_heads,
-                           token_dropout=self.token_dropout)
+            'params': self.init_params
         }
 
         torch.save(data, to)

@@ -172,3 +172,5 @@ results/
 .sesskey
 
 tmp*
+
+.weights/
