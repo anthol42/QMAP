@@ -62,28 +62,29 @@ def split_clusters(clusters, test_ratio: float = 0.2, val_ratio = 0.1) -> tuple:
     test_ids = clusters[clusters['cluster_id'].isin(test_clusters)]['sequence_id'].tolist()
     return train_ids, val_ids, test_ids
 
-clusters = parse_cdhit_clstr(".cache/clusters.clstr")
-train_ids, val_ids, test_ids = split_clusters(clusters)
+if __name__ == "__main__":
+    clusters = parse_cdhit_clstr(".cache/clusters.clstr")
+    train_ids, val_ids, test_ids = split_clusters(clusters)
 
-# Now, make the datasets in the build directory
-out_path = PurePath("build")
-if not os.path.exists(out_path):
-    os.makedirs(out_path)
+    # Now, make the datasets in the build directory
+    out_path = PurePath("build")
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
 
-dataset = read_fasta(".cache/peptide_atlas.fasta")
+    dataset = read_fasta(".cache/peptide_atlas.fasta")
 
-# Train set
-with open(out_path / "train.fasta", "w") as f:
-    for id_ in train_ids:
-        f.write(f">{id_}\n{dataset[id_]}\n")
+    # Train set
+    with open(out_path / "train.fasta", "w") as f:
+        for id_ in train_ids:
+            f.write(f">{id_}\n{dataset[id_]}\n")
 
-# Validation set
-with open(out_path / "val.fasta", "w") as f:
-    for id_ in val_ids:
-        f.write(f">{id_}\n{dataset[id_]}\n")
+    # Validation set
+    with open(out_path / "val.fasta", "w") as f:
+        for id_ in val_ids:
+            f.write(f">{id_}\n{dataset[id_]}\n")
 
-# Test set
+    # Test set
 
-with open(out_path / "test.fasta", "w") as f:
-    for id_ in test_ids:
-        f.write(f">{id_}\n{dataset[id_]}\n")
+    with open(out_path / "test.fasta", "w") as f:
+        for id_ in test_ids:
+            f.write(f">{id_}\n{dataset[id_]}\n")
