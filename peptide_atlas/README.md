@@ -42,9 +42,9 @@ can run independently and the results can be merged later. The same is true for 
 both types of sampling to get an identity distribution close to uniform.
 7. After all processes are done, you can merge the results by running the `merge_alignments.py` script:
 ```bash
-uv run merge_alignments.py --dir=.cache/val_parts --output=build/val.npy
-uv run merge_alignments.py --dir=.cache/test_parts --output=build/test.npy
-uv run merge_alignments.py --dir=.cache/train_parts --output=build/train.npy
+uv run merge_alignments.py --dir=.cache/val_parts --output=build/val.npy --min_samples=50000
+uv run merge_alignments.py --dir=.cache/test_parts --output=build/test.npy --min_samples=100000
+uv run merge_alignments.py --dir=.cache/train_parts --output=build/train.npy --min_samples=500000
 ```
 
 Done! The dataset is now ready!
