@@ -90,9 +90,7 @@ def experiment1(args, kwargs):
     if not args.randominit:
         log("Loading pretrained weights")
         size = config["model"]["name"].split("_")[-1]
-        model.backbone.load_state_dict(
-            utils.get_esm_weights(size, config["model"]["weights_path"])
-        )
+        utils.load_weights(model.backbone, size, config["model"]["weights_path"])
     model.to(device)
     if args.verbose >= 3:
         B = config["data"]["batch_size"]

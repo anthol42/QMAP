@@ -59,3 +59,14 @@ def get_esm_weights(size: Literal["8M", "35M", "150M", "650M"], path: str):
         for esm_path in esm_paths:
             os.remove(esm_path)
         return state_dict
+
+def load_weights(model: torch.nn.Module, size: Literal["8M", "35M", "150M", "650M"], path: str):
+    state_dict = get_esm_weights(size, path)
+    model_state_dict = model.state_dict()
+    for key in model_state_dict.keys():
+        if key.endswith("cos_cached") and key not in state_dict:
+            state_dict[key] = model_state_dict[key]
+        elif key.endswith("sin_cached") and key not in state_dict:
+            state_dict[key] = model_state_dict[key]
+
+    model.load_state_dict(state_dict)

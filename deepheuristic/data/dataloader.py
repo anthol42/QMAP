@@ -4,9 +4,9 @@ from .alignment_collator import AlignmentCollator
 from torch.utils.data import DataLoader
 
 def make_dataloader(config, alphabet: ESMAlphabet, fract: float):
-    train_ds = AlignmentDataset(config, split="train", fract=fract)
+    train_ds = AlignmentDataset(config, split="val", fract=fract)
     val_ds = AlignmentDataset(config, split="val", fract=fract)
-    test_ds = AlignmentDataset(config, split="test")
+    test_ds = AlignmentDataset(config, split="val")
     # Print dataset sizes
     print(f"Dataset sizes:\n\t-Train: {len(train_ds)}\n\t-Val: {len(val_ds)}\n\t-Test: {len(test_ds)}")
     # Create dataloaders
