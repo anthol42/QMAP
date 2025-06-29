@@ -13,7 +13,7 @@ class AlignmentCollator(BaseCollator):
         B = len(raw_batch)
         seq1, seq2, label = zip(*raw_batch)
         L1 = max(len(s) for s in seq1)
-        L2 = len(seq2)
+        L2 = max(len(s) for s in seq2)
 
         # Tokenize
         toks1 = self.tokenize_batch(seq1)

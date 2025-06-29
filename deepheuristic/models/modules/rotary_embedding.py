@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Tuple
-
 import torch
 
 
@@ -19,6 +18,12 @@ def apply_rotary_pos_emb(x, cos, sin):
 
     return (x * cos) + (rotate_half(x) * sin)
 
+def make_rotary_pos_emb(inv_freq, max_len: int):
+    t = torch.arange(max_len).float()
+    freqs = torch.einsum("i,j->ij", t, inv_freq)
+    emb = torch.cat((freqs, freqs), dim=-1)
+
+    return emb.cos()[None, :, :], emb.sin()[None, :, :]
 
 class RotaryEmbedding(torch.nn.Module):
     """
@@ -34,36 +39,40 @@ class RotaryEmbedding(torch.nn.Module):
         (it does not create the embedding dimension) and will likely be picked up (imported) on a ad-hoc basis
     """
 
-    def __init__(self, dim: int, *_, **__):
+    def __init__(self, dim: int, max_seq_length: int = 100, *_, **__):
         super().__init__()
         # Generate and save the inverse frequency buffer (non trainable)
         inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
         self.register_buffer("inv_freq", inv_freq)
 
-        self._seq_len_cached = None
-        self._cos_cached = None
-        self._sin_cached = None
+        cos, sin = make_rotary_pos_emb(self.inv_freq, max_seq_length)
 
-    def _update_cos_sin_tables(self, x, seq_dimension=1):
-        seq_len = x.shape[seq_dimension]
+        self.register_buffer("cos_cached", cos)
+        self.register_buffer("sin_cached", sin)
 
-        # Reset the tables if the sequence length has changed,
-        # or if we're on a new device (possibly due to tracing for instance)
-        if seq_len != self._seq_len_cached or self._cos_cached.device != x.device:
-            self._seq_len_cached = seq_len
-            t = torch.arange(x.shape[seq_dimension], device=x.device).type_as(self.inv_freq)
-            freqs = torch.einsum("i,j->ij", t, self.inv_freq)
-            emb = torch.cat((freqs, freqs), dim=-1).to(x.device)
-
-            self._cos_cached = emb.cos()[None, :, :]
-            self._sin_cached = emb.sin()[None, :, :]
-
-        return self._cos_cached, self._sin_cached
+    # def _update_cos_sin_tables(self, x, seq_dimension=1):
+    #     seq_len = x.shape[seq_dimension]
+    #
+    #     # Reset the tables if the sequence length has changed,
+    #     # or if we're on a new device (possibly due to tracing for instance)
+    #     if seq_len != self._seq_len_cached or self._cos_cached.device != x.device:
+    #         self._seq_len_cached = seq_len
+    #         t = torch.arange(x.shape[seq_dimension], device=x.device).type_as(self.inv_freq)
+    #         freqs = torch.einsum("i,j->ij", t, self.inv_freq)
+    #         emb = torch.cat((freqs, freqs), dim=-1).to(x.device)
+    #
+    #         self._cos_cached = emb.cos()[None, :, :]
+    #         self._sin_cached = emb.sin()[None, :, :]
+    #
+    #     return self._cos_cached, self._sin_cached
 
     def forward(self, q: torch.Tensor, k: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        self._cos_cached, self._sin_cached = self._update_cos_sin_tables(k, seq_dimension=-2)
+        seq_len = k.shape[-2]
 
+        # Just slice the pre-computed tables!
+        cos = self.cos_cached[:, :seq_len, :]
+        sin = self.sin_cached[:, :seq_len, :]
         return (
-            apply_rotary_pos_emb(q, self._cos_cached, self._sin_cached),
-            apply_rotary_pos_emb(k, self._cos_cached, self._sin_cached),
+            apply_rotary_pos_emb(q, cos, sin),
+            apply_rotary_pos_emb(k, cos, sin),
         )

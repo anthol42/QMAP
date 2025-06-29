@@ -163,7 +163,7 @@ def get_profile():
     # If you want to change profile based on the machine
     hostname = socket.gethostname()
     # For the purpose of the example, we base the profile on the compute capabilities (cpu or gpu)
-    if "MBP" in hostname:
+    if "MBP" in hostname or "computer" in hostname:
         return "local"
     else:
         return "hpc"
