@@ -27,7 +27,7 @@ cd-hit -i build/test.fasta -o .cache/test_clusters -c 0.5 -n 2 -d 0 -M 30000 -T 
 6. The dataset splits will be saved in the build directory. Next, you need to annotate the dataset. This task is 
 compute intensive and may take a while to complete. To make things faster, we suggest to split the computation across 
 multiple processes or even compute nodes. To build the original dataset, the following process were run:
-- Train: 100 processes of 2.5M alignments each with random sampling and 100 processes of 2.5M alignments with cluster sampling
+- Train: 100 processes of 2.5M alignments each with random sampling and 100 processes of 1.25M alignments with cluster sampling
 - Validation: 15 processes of 2.5M alignments each with random sampling and 15 processes of 2.5M alignments with cluster sampling
 - Test: 30 processes of 2.5M alignments each with random sampling and 30 processes of 2.5M alignments with cluster sampling
 
