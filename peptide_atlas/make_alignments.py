@@ -46,16 +46,19 @@ def cluster_alignments(input_path: str, cluster_path, output_path: str, n: int, 
     cluster_count = clusters['cluster_id'].value_counts()
     clusters2keep = cluster_count.loc[cluster_count > 10].index
     clusters = clusters.set_index("cluster_id").loc[clusters2keep]
-
     cluster_ids =clusters.index
+
+    # Convert clusters to dict where the key is the cluster ID and the value is a list of sequence IDs
+    clusters = clusters.groupby(clusters.index)['sequence_id'].apply(list).to_dict()
+
     alignments = np.full((n, 3), np.nan, dtype=np.float64)
     for i in tqdm(range(n), disable=not progress):
         # 1. Sample a cluster
         cluster_idx = np.random.choice(cluster_ids)
-        cluster_nodes = clusters.loc[cluster_idx]["sequence_id"].values
+        cluster_nodes = clusters[cluster_idx]
         assert len(cluster_nodes) > 2, "Cluster must have at least 3 nodes to sample alignments."
-        src = np.random.choice(cluster_nodes).item()
-        dst = np.random.choice(cluster_nodes).item()
+        src = np.random.choice(cluster_nodes)
+        dst = np.random.choice(cluster_nodes)
         while src == dst:
             dst = np.random.choice(cluster_nodes)
 

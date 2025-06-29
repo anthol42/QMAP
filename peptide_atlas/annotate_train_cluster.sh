@@ -18,4 +18,4 @@ uv run make_alignments.py \
     --input=build/train.fasta \
     --clusters=.cache/train_clusters.clstr \
     --output=.cache/train_parts/${OUTPUT_INDEX}.npy \
-    --type=cluster
+    --type=cluster --n=1250000
