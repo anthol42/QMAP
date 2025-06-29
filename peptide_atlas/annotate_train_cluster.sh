@@ -3,7 +3,7 @@
 #SBATCH --array=0-99
 #SBATCH --output=logs/train_cluster_sampling_%A_%a.out
 #SBATCH --error=logs/train_cluster_sampling_%A_%a.err
-#SBATCH --time=04:00:00
+#SBATCH --time=03:00:00
 #SBATCH --mem=1G
 #SBATCH --cpus-per-task=1
 
