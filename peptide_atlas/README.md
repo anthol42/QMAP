@@ -20,7 +20,7 @@ uv run split_dataset.py
 ```
 5. Next, you need to create the clusters for each split.:
 ```shell
-cd-hit -i build/train.fasta -o .cache/train_clusters -c 0.5 -n 2 -d 0 -M 30000 -T 10 -l 5
+cd-hit -i build/train.fasta -o .cache/train_clusters -c 0.8 -n 2 -d 0 -M 30000 -T 10 -l 5
 cd-hit -i build/val.fasta -o .cache/val_clusters -c 0.5 -n 2 -d 0 -M 30000 -T 10 -l 5
 cd-hit -i build/test.fasta -o .cache/test_clusters -c 0.5 -n 2 -d 0 -M 30000 -T 10 -l 5
 ```
