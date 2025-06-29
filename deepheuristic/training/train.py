@@ -61,7 +61,8 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
 
         # Report metrics
         if i % 100 == 0:
-            State.resultSocket.add_scalar('Step/Loss', metr["loss"], epoch=epoch, step=State.global_step)
+            State.resultSocket.add_scalar('Step/loss', metr["loss"], epoch=epoch, step=State.global_step)
+            State.resultSocket.add_scalar('Step/alpha', criterion.activation.weight.item(), epoch=epoch, step=State.global_step)
             lossCounter(loss)
             for metric_name, value in metr.items():
                 if metric_name == "loss":
