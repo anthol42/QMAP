@@ -29,7 +29,7 @@ sys.excepthook = TraceBackColor()
 
 # Configure the deep learning progress bar
 progress.set_config(
-    done_color=Colors.darken,
+    # done_color=Colors.darken,
     type="dl",
     cursors=(f"{Color(8)}╺", f"╸{Color(8)}"),
     cu="━",

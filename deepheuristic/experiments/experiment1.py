@@ -57,8 +57,9 @@ def experiment1(args, kwargs):
         wd=config["training"]["weight_decay"],
         loss=config["training"]["loss"],
         optimizer=config["training"]["optimizer"],
-        head_dropout= config["model"]["head_dropout"],
-        proj_dim= config["model"]["proj_dim"],
+        head_dropout=config["model"]["head_dropout"],
+        proj_dim=config["model"]["proj_dim"],
+        pretrained=not args.randominit
     )
     run_id = resultSocket.run_id
 
@@ -68,7 +69,7 @@ def experiment1(args, kwargs):
 
     alphabet = ESMAlphabet()
     # Loading the data
-    train_loader, val_loader, test_loader = make_dataloader(config=config, alphabet=alphabet)
+    train_loader, val_loader, test_loader = make_dataloader(config=config, alphabet=alphabet, fract=args.fract)
     log("Data loaded successfully!")
 
     # Loading the model
@@ -86,10 +87,12 @@ def experiment1(args, kwargs):
         proj_dim = config["model"]["proj_dim"],
         use_clf_token = config["model"]["use_clf_token"]
     )
-    size = config["model"]["name"].split("_")[-1]
-    model.backbone.load_state_dict(
-        utils.get_esm_weights(size, config["model"]["weights_path"])
-    )
+    if not args.randominit:
+        log("Loading pretrained weights")
+        size = config["model"]["name"].split("_")[-1]
+        model.backbone.load_state_dict(
+            utils.get_esm_weights(size, config["model"]["weights_path"])
+        )
     model.to(device)
     if args.verbose >= 3:
         B = config["data"]["batch_size"]
@@ -155,7 +158,7 @@ def experiment1(args, kwargs):
         warn(config.get_warnings())
 
     # Save results
-    resultSocket.write_result(**{name: result.item for name, result in results.items()})
+    resultSocket.write_result(**{name: result.item() for name, result in results.items()})
 
 
 

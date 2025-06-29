@@ -60,19 +60,20 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
         metr["loss"] = loss.item()
 
         # Report metrics
-        State.resultSocket.add_scalar('Step/Loss', metr["loss"], epoch=epoch)
-        lossCounter(loss)
-        for metric_name, value in metr.items():
-            if metric_name == "loss":
-                continue
-            State.resultSocket.add_scalar(f'Step/{metric_name}', value, epoch=epoch)
+        if i % 100 == 0:
+            State.resultSocket.add_scalar('Step/Loss', metr["loss"], epoch=epoch, step=State.global_step)
+            lossCounter(loss)
+            for metric_name, value in metr.items():
+                if metric_name == "loss":
+                    continue
+                State.resultSocket.add_scalar(f'Step/{metric_name}', value, epoch=epoch, step=State.global_step)
 
         #Display metrics
         prg.report(
             loss=lossCounter.compute().item(),
             **{k: v.compute().item() for k, v in metrics.items()}
         )
-
+    print()
     # Report epochs metrics
     for metric_name, counter in metrics.items():
         State.resultSocket.add_scalar(f'Train/{metric_name}', counter.compute(), State.global_step, epoch=epoch)
@@ -88,7 +89,7 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
     for m in metrics.values():
         m.reset()
 
-    for _, _, seq1, seq2, label in dataloader:
+    for _, _, seq1, seq2, label in progress(dataloader, desc="Validating", type="dl"):
         # Setup - Copying to gpu if available
         seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
 
@@ -111,7 +112,7 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
 
     # Display metrics
     if verbose:
-        print(f'{Colors.darken} | {format_metrics(val=True, loss=lossCounter, **metrics)}{Colors.reset}')
+        print(f'\r\033[K\r  ✅  {Colors.text}{format_metrics(val=True, loss=lossCounter, **metrics)}{Colors.reset}')
 
     # Report epochs metrics
     last_valid = {}
