@@ -1,7 +1,7 @@
 from pyutils import ConfigFormat, Option, Options, Default, Profile
 config_format = ConfigFormat({
     "data":{
-        "batch_size": int,
+        "batch_size": Profile(int),
         "shuffle": Default(bool, True),
         "path": Default(str, "../peptide_atlas/build"),
         "num_workers": Profile(int),

@@ -1,19 +1,19 @@
 data:
-  batch_size: [512, 512]
+  batch_size: [64, 64]
   num_workers: [2, 2] # local, hpc
 training:
   num_epochs: 20
-  lr: 0.0001
+  lr: 1.e-5
   min_lr: 0.
-  weight_decay:  5.e-5
+  weight_decay:  1.e-4
   loss: "MSE"
   optimizer: "AdamW"
 model:
   model_dir: ["saved_models/ESM", ""] # TODO: Change the path for HPC
   weights_path: [".weights/esm2", ""] # TODO: Change the path for HPC
-  name: "ESM_8M"
-  num_layers: 6
-  embed_dim: 320
+  name: "ESM_150M"
   attention_heads: 20
+  embed_dim: 640
+  num_layers: 30
   head_dropout: 0.
   proj_dim: 128

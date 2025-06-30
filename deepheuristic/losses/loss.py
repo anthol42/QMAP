@@ -8,7 +8,7 @@ class Criterion(nn.Module):
         self.loss_type = loss_type
         if loss_type == "MSE":
             self.criterion = nn.MSELoss()
-            self.activation = nn.PReLU(init=-0.5)
+            self.activation = nn.PReLU(init=0.25)
         elif loss_type == "BCE": # TODO: Find why it does not work
             self.criterion = nn.BCELoss()
             self.activation = nn.PReLU(init=-0.5)
