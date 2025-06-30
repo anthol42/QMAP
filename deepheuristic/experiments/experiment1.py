@@ -101,7 +101,10 @@ def experiment1(args, kwargs):
     # Loading optimizer, loss and scheduler
     loss = Criterion(loss_type=config["training"]["loss"])
     loss.to(device)
-    optimizer = make_optimizer(list(model.parameters()) + list(loss.parameters()), config["training"]["optimizer"], lr=config["training"]["lr"],
+    optimizer = make_optimizer(model.parameters(),
+                               loss.parameters(),
+                               config["training"]["optimizer"],
+                               lr=config["training"]["lr"],
                                weight_decay=config["training"]["weight_decay"])
 
     scheduler = make_scheduler(optimizer, config, num_steps=config["training"]["num_epochs"] * len(train_loader))
@@ -143,6 +146,7 @@ def experiment1(args, kwargs):
     save_dict = {
         "epoch": config["training"]["num_epochs"],
         "model_state_dict": model.state_dict(),
+        "activation": loss.activation.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
         "test_results": results
     }

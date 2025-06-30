@@ -46,7 +46,7 @@ class SaveBestModel:
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-    def __call__(self, current_val, epoch, model, optimizer, criterion=None, outputMessage=""):
+    def __call__(self, current_val, epoch, model, optimizer, criterion: torch.nn.Module, outputMessage=""):
         """
         Call after each epoch
         :param current_val: Current metric value
@@ -65,10 +65,10 @@ class SaveBestModel:
                     print(f"Saving best model for epoch: {epoch + 1} at {self.save_dir}")
                     print(outputMessage)
                 torch.save({
-                    'epoch': epoch + 1,
+                    'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': criterion,
+                    'activation': criterion.activation.state_dict(),
                     'metric':current_val,
                     'metric_name':self.metric_name,
                 }, '{}/{}.pth'.format(self.save_dir, self.model_name))
@@ -80,12 +80,12 @@ class SaveBestModel:
                     print(f"Saving best model for epoch: {epoch + 1} at {self.save_dir}")
                     print(outputMessage)
                 torch.save({
-                    'epoch': epoch + 1,
+                    'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': criterion,
-                    'metric': current_val,
-                    'metric_name': self.metric_name,
+                    'activation': criterion.activation.state_dict(),
+                    'metric':current_val,
+                    'metric_name':self.metric_name,
                 }, '{}/{}.pth'.format(self.save_dir, self.model_name))
         else:
             raise ValueError(f"Invalid evaluation method: {self.evaluation_method}, Expected: 'MAX' or 'MIN'")
