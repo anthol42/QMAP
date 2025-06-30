@@ -1,6 +1,7 @@
 data:
   batch_size: [256, 256]
   num_workers: [2, 2] # local, hpc
+  path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
 training:
   num_epochs: 20
   lr: 0.0001
@@ -9,8 +10,8 @@ training:
   loss: "MSE"
   optimizer: "AdamW"
 model:
-  model_dir: ["saved_models/ESM", ""] # TODO: Change the path for HPC
-  weights_path: [".weights/esm2", ""] # TODO: Change the path for HPC
+  model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
+  weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
   name: "ESM_35M"
   attention_heads: 20
   embed_dim: 480

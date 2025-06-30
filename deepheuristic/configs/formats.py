@@ -3,7 +3,7 @@ config_format = ConfigFormat({
     "data":{
         "batch_size": Profile(int),
         "shuffle": Default(bool, True),
-        "path": Default(str, "../peptide_atlas/build"),
+        "path": Profile(str),
         "num_workers": Profile(int),
     },
     "training":{
