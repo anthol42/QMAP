@@ -126,6 +126,7 @@ def experiment1(args, kwargs):
         num_epochs=config["training"]["num_epochs"],
         device=device,
         scheduler=scheduler,
+        noscaler=args.noscaler,
         config=config,
         metrics=metrics,
         watch=args.watch,

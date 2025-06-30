@@ -5,12 +5,13 @@ from typing import Optional, Literal
 class Criterion(nn.Module):
     def __init__(self, loss_type: Literal['MSE', 'BCE'] = 'MSE'):
         super().__init__()
+        self.loss_type = loss_type
         if loss_type == "MSE":
             self.criterion = nn.MSELoss()
-            self.activation = nn.PReLU()
-        elif loss_type == "BCE":
-            self.criterion = nn.BCEWithLogitsLoss()
-            self.activation = nn.ReLU()
+            self.activation = nn.PReLU(init=-0.5)
+        elif loss_type == "BCE": # TODO: Find why it does not work
+            self.criterion = nn.BCELoss()
+            self.activation = nn.PReLU(init=-0.5)
         else:
             raise ValueError(f"Unknown loss type: {loss_type}")
 
