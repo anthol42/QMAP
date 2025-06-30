@@ -3,7 +3,7 @@
 #SBATCH --array=0-3
 #SBATCH --output=logs/%x_%A_%a.log
 #SBATCH --error=logs/%x_%A_%a.log
-#SBATCH --time=24:00:00
+#SBATCH --time=6:00:00
 #SBATCH --mem=8Gb
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:1
@@ -23,7 +23,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --config.model.proj_dim=$PARAM
+uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --verbose=2 --config.model.proj_dim=$PARAM
 
 echo "End time: $(date)"
 echo "Job completed"
