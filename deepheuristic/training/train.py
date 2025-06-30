@@ -58,12 +58,12 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
 
             # print(f"{i} - Loss: {loss.item()}; {','.join(f'{metric}: {fn(targets, pred)}' for metric, fn in metrics.items())}")
         metr["loss"] = loss.item()
+        lossCounter(loss)
 
         # Report metrics
-        if i % 100 == 0:
+        if i % 100 == 0 and i > 0: # We ignore the first step
             State.resultSocket.add_scalar('Step/loss', metr["loss"], epoch=epoch, step=State.global_step)
             State.resultSocket.add_scalar('Step/alpha', criterion.activation.weight.item(), epoch=epoch, step=State.global_step)
-            lossCounter(loss)
             for metric_name, value in metr.items():
                 if metric_name == "loss":
                     continue
@@ -78,7 +78,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
     # Report epochs metrics
     for metric_name, counter in metrics.items():
         State.resultSocket.add_scalar(f'Train/{metric_name}', counter.compute(), State.global_step, epoch=epoch)
-    State.resultSocket.add_scalar(f'Train/Loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
+    State.resultSocket.add_scalar(f'Train/loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
 
 @torch.inference_mode()
 def validation_step(model, dataloader, criterion, epoch, device, metrics: dict = None, verbose: bool = True):
@@ -120,7 +120,7 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
     for metric_name, counter in metrics.items():
         State.resultSocket.add_scalar(f'Valid/{metric_name}', counter.compute(), State.global_step, epoch=epoch)
         last_valid[metric_name] = counter.compute()
-    State.resultSocket.add_scalar(f'Valid/Loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
+    State.resultSocket.add_scalar(f'Valid/loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
     last_valid["loss"] = lossCounter.compute()
     State.last_valid = last_valid
 
