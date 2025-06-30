@@ -23,7 +23,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract-0.1 --config.model.proj_dim=$PARAM
+uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --config.model.proj_dim=$PARAM
 
 echo "End time: $(date)"
 echo "Job completed"

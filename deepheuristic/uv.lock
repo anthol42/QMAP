@@ -910,7 +910,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "antho-utils", specifier = ">=0.1.0" },
-    { name = "deepboard", extras = ["full"], specifier = ">=0.2.2" },
+    { name = "deepboard", extras = ["full"], specifier = ">=0.2.3" },
     { name = "fair-esm", specifier = ">=2.0.0" },
     { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "numpy", specifier = ">2.0.0" },
