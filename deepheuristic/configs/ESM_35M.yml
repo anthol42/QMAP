@@ -17,4 +17,5 @@ model:
   embed_dim: 480
   num_layers: 12
   head_dropout: 0.
-  proj_dim: 128
+  proj_dim: 512
+  head_depth: 0
