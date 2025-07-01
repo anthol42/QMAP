@@ -8,6 +8,7 @@ dependencies = [
     "antho-utils>=0.1.0",
     "deepboard[full]>=0.2.3",
     "fair-esm>=2.0.0",
+    "jupyter>=1.1.1",
     "matplotlib>=3.10.3",
     "numpy>2.0.0",
     "pandas>=2.3.0",
