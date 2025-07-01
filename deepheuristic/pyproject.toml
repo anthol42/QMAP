@@ -11,6 +11,8 @@ dependencies = [
     "jupyter>=1.1.1",
     "matplotlib>=3.10.3",
     "numpy>2.0.0",
+    "optuna>=4.4.0",
+    "optuna-dashboard>=0.18.0",
     "pandas>=2.3.0",
     "pillow>=11.2.1",
     "pyyaml>=6.0.2",

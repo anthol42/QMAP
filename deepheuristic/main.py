@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 # ######################################################################################################################
 # ------------------------------------------- Import here your experiments ------------------------------------------- #
 # ######################################################################################################################
-from experiments.experiment1 import experiment1
+from experiments.experiment1 import experiment1, experiment1_hsearch
 
 
 
@@ -28,9 +28,10 @@ parser.add_argument("--comment", required=False, type=str, default=None)
 parser.add_argument("--sample_inputs", action="store_true", default=False)
 parser.add_argument("--noscaler", action="store_true", default=False)
 parser.add_argument("--cpu", action="store_true", default=False) # Train on cpu only
-parser.add_argument("--watch", required=False, type=str, default="loss")
+parser.add_argument("--watch", required=False, type=str, default="mae")
 parser.add_argument("--randominit", required=False, action="store_true", default=False, help="Initialize the model randomly instead of using pretrained weights")
 parser.add_argument("--fract", required=False, type=float, default=1., help="Fraction of training and validation data to use")
+parser.add_argument("--n_trials", required=False, type=int, default=20, help="Number of trials to do using optuna")
 parser.add_argument("--verbose", required=False, type=int, default=3)  # 3: all # 2: logs # 1: errors and warnings only # 0: nothing
 
 # ######################################################################################################################
@@ -38,6 +39,7 @@ parser.add_argument("--verbose", required=False, type=int, default=3)  # 3: all 
 # ######################################################################################################################
 experiments = {
     "experiment1":experiment1,
+    "experiment1_hsearch": experiment1_hsearch,
 }
 
 

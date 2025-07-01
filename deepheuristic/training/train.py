@@ -1,3 +1,4 @@
+import optuna
 import torch
 import utils
 from pyutils import progress
@@ -126,7 +127,9 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
 
 def train(model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, scheduler=None,
           metrics: dict = None, noscaler: bool = False, watch: str = "accuracy", sample_inputs: Optional[str] = None,
+          optuna_trial: Optional[optuna.Trial] = None,
           verbose: int = 3):
+    log("Training in optuna mode") if optuna_trial is not None else None
     State.global_step = 0
     # Checkpoints
     m, b = ("MIN", float("inf")) if watch == "loss" or "MAE" else ("MAX", float('-inf'))
@@ -151,6 +154,12 @@ def train(model, optimizer, train_loader, val_loader, criterion, num_epochs, dev
         validation_step(
             model, val_loader, criterion, epoch, device, metrics, verbose == 3
         )
+
+        if optuna_trial is not None:
+            # Report the best value to optuna
+            optuna_trial.report(State.last_valid[watch], epoch)
+            if optuna_trial.should_prune():
+                raise optuna.TrialPruned()
 
         # Checkpoint
         save_best_model(State.last_valid[watch], epoch, model, optimizer, criterion)

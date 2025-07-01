@@ -174,3 +174,5 @@ results/
 tmp*
 
 .weights/
+
+hsearch_*
