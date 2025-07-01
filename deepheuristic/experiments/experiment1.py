@@ -18,6 +18,10 @@ from torchmetrics import MeanAbsoluteError, PearsonCorrCoef
 from torchinfo import summary
 # To verify if the config has the good format
 from configs.formats import config_format
+import matplotlib.pyplot as plt
+import numpy as np
+
+plt.rcParams['savefig.dpi'] = 600
 
 metrics = {
     "mae": MeanAbsoluteError(),
@@ -59,6 +63,7 @@ def experiment1(args, kwargs):
         optimizer=config["training"]["optimizer"],
         head_dropout=config["model"]["head_dropout"],
         proj_dim=config["model"]["proj_dim"],
+        head_depth=config["model"]["head_depth"],
         pretrained=not args.randominit
     )
     run_id = resultSocket.run_id
@@ -82,7 +87,7 @@ def experiment1(args, kwargs):
         attention_dropout = config["model"]["attention_dropout"],
         layer_dropout = config["model"]["layer_dropout"],
         head_dropout = config["model"]["head_dropout"],
-        head_dim = config["model"]["embed_dim"],
+        head_dim = config["model"]["proj_dim"],
         head_depth = config["model"]["head_depth"],
         proj_dim = config["model"]["proj_dim"],
         use_clf_token = config["model"]["use_clf_token"]
@@ -141,15 +146,47 @@ def experiment1(args, kwargs):
         "model_state_dict"]
     model.load_state_dict(weights)
     # Test
-    results = evaluate(model, test_loader, loss, device, metrics=metrics)
+    results, all_preds = evaluate(model, test_loader, loss, device, metrics=metrics)
     log("Training done!  Saving...")
+
+    # Prediction range
+    plt.hist(all_preds.numpy(), bins=100, density=True)
+    plt.title("Prediction distribution")
+    plt.xlabel("Predicted Identity")
+    plt.ylabel("Density")
+    plt.grid()
+    resultSocket.detect_and_log_figures(step=State.global_step, split="test", epoch=config["training"]["num_epochs"])
+    plt.close()
+
+    # Error
+    error = test_loader.dataset.label - all_preds.numpy().squeeze()
+    plt.hist(error, bins=100, density=True)
+    plt.title("Error between true identity and predicted identity")
+    plt.xlabel("Error (GT - pred)")
+    plt.ylabel("Density")
+    plt.grid()
+    resultSocket.detect_and_log_figures(step=State.global_step, split="test", epoch=config["training"]["num_epochs"])
+    plt.close()
+
+    # Make the table
+    abs_error = np.abs(error)
+    labels = [0.05, 0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
+    quantiles = [f"{value:.3f}" if abs(value) >= 0.001 else f"{value:.2e}"
+             for value in np.quantile(abs_error, labels)]
+    rows = [[label, value] for label, value in zip(labels, quantiles)]
+    html_table = utils.make_table(["Quantile", "Error"], rows)
+    with open('tmp.html', 'w') as f:
+        f.write(html_table)
+
+    resultSocket.add_fragment(html_table, step=State.global_step, split="test", epoch=config["training"]["num_epochs"])
 
     save_dict = {
         "epoch": config["training"]["num_epochs"],
         "model_state_dict": model.state_dict(),
         "activation": loss.activation.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "test_results": results
+        "test_results": results,
+        "test_preds": all_preds.half()
     }
     torch.save(
         save_dict, f"{config['model']['model_dir']}/final_{config['model']['name']}.pth")

@@ -165,7 +165,7 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
     for m in metrics.values():
         m.reset()
 
-    output_rate = 25 if str(device) == 'cuda' else 1
+    all_preds = []
     for prg, (_, _, seq1, seq2, label) in progress(dataloader, type="dl", desc="Evaluating", end="\n").ref():
         # Setup - Copying to gpu if available
         seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
@@ -175,6 +175,7 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
         pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
         # Dot product of the vectors to get the predicted labels
         pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
+        all_preds.append(pred.detach().cpu())
         loss = criterion(pred, label)  # MSE loss between predicted and true labels
 
         # Calculate metrics
@@ -191,5 +192,7 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
             **{k: v.compute().item() for k, v in metrics.items()}
         )
 
+    all_preds = torch.cat(all_preds)
+    all_preds = criterion.activation(all_preds.to(device)).cpu()
     # Report epochs metrics
-    return dict(loss=lossCounter.compute(), **{k: v.compute() for k, v in metrics.items()})
+    return dict(loss=lossCounter.compute(), **{k: v.compute() for k, v in metrics.items()}), all_preds

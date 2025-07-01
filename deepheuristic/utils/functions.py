@@ -193,5 +193,23 @@ def read_fasta(file_path):
             sequences[id_] = sequence
     return sequences
 
+
+def make_table(header: list, rows: list[list]) -> str:
+    """
+    Make a html table from a list of rows (Matrix)
+    """
+    table = "<table>"
+    # Add header
+    header = "\n\t<tr>{}</tr>".format(" ".join([f"<th>{h}</th>" for h in header]))
+    table += header
+
+    # Add rows
+    for row in rows:
+        table += "\n<tr>{}</tr>".format(" ".join(f"<td>{value}</td>" for value in row))
+
+    table += "</table>"
+    return table
+
+
 if __name__ == "__main__":
     pass
