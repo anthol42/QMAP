@@ -2,6 +2,7 @@ from .model import ESMEncoder
 from .model import ESMAlphabet
 import torch
 from torch.utils.data import DataLoader, Dataset
+from torch.nn import PReLU
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -117,6 +118,10 @@ class Encoder:
         self.model.load_state_dict(data["model_state_dict"])
         self.model.to(self.device)
         self.model.eval()
+        self.activation = PReLU()
+        self.activation.load_state_dict(data["activation"])
+        self.activation.to(self.device)
+        self.activation.eval()
 
     def encode(self, sequences: list[str]) -> VectorizedDB:
         """
