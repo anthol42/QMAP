@@ -3,7 +3,7 @@ data:
   num_workers: [2, 2] # local, hpc
   path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
 training:
-  num_epochs: 5
+  num_epochs: 20
   lr: 0.0001
   min_lr: 0.
   weight_decay:  1.e-4
