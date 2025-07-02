@@ -16,7 +16,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1_hsearch --config=configs/ESM_35M.yml --fract=0.1 --verbose=1 --n_trials=12
+uv run main.py --experiment=experiment1_hsearch --config=configs/ESM_35M.yml --fract=0.1 --verbose=1 --n_trials=18
 
 echo "End time: $(date)"
 echo "Job completed"
