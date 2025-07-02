@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Tuple, Sequence, Literal
 from pyutils import progress
 from .vectorizedDB import VectorizedDB
+from .utils import _get_device
 
 root = Path(__file__).parent.parent
 
@@ -25,22 +26,6 @@ class EsmEncoderConfig:
     proj_dim: int = 512
     use_clf_token: bool = True
 
-def _get_device(force_cpu: bool = False):
-    """
-    Find which device is the optimal device for training.  Priority order: cuda, mps, cpu
-    Returns: the device
-    """
-    if not force_cpu:
-        if torch.cuda.is_available():
-            return torch.device("cuda")
-        elif torch.backends.mps.is_available():
-            return torch.device("mps")
-        else:
-            print("Did not find any accelerator. Training may be slow")
-            return torch.device("cpu")
-    else:
-        print("Forcing training on cpu only. Training may be slow.")
-        return torch.device("cpu")
 
 class AlignmentCollator:
     def __init__(self, alphabet: ESMAlphabet, max_len: int = 100):
@@ -145,7 +130,7 @@ class Encoder:
         all_embeddings = []
         all_sequences = []
         with torch.inference_mode():
-            for seqs, tokens in progress(dataloader, type="pip", desc="Encoding sequences"):
+            for seqs, tokens in progress(dataloader, type="pip", desc="Encoding sequences", display=len(dataloader) > 1):
                 tokens = tokens.to(self.device)
                 embeddings = self.model(tokens)
                 all_embeddings.append(embeddings.cpu().half())

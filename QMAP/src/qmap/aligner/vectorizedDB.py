@@ -63,3 +63,6 @@ class VectorizedDB:
 
         return s
 
+    def __repr__(self):
+        return f"VectorizedDB(sequences={len(self.sequences)}, embeddings={self.embeddings.shape})"
+
