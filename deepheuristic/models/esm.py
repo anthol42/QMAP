@@ -158,6 +158,41 @@ class ESM(nn.Module):
         x = x.transpose(0, 1)  # (T, B, E) => (B, T, E)
         return x
 
+class Activation(nn.Module):
+    def __init__(self, hidden_size: int = 512, rbf: bool = False):
+        """
+        If rbf is False, the hidden size must be the same as the embedding size.
+        :param hidden_size:
+        :param rbf:
+        """
+        super().__init__()
+        self.rbf = rbf
+        if self.rbf:
+            self.beta = nn.Parameter(0.1 * torch.randn((1, hidden_size)))
+            self.gamma = nn.Parameter((0.1 * torch.randn((1, hidden_size))) ** 2)
+        else:
+            self.bias = nn.Parameter(torch.zeros((1, 1)))
+
+        self.weight = nn.Parameter(0.01 * torch.randn((hidden_size, 1)))
+
+    def forward(self, emb1: torch.Tensor, emb2: torch.Tensor):
+        """
+        Compute the pseudo-identity between two embeddings.
+        :param emb1: The first embedding tensor of shape (B, E)
+        :param emb2: The second embedding tensor of shape (B, E)
+        :return: (B, 1) tensor with the pseudo-identity (between 0 and 1)
+        """
+
+        dist = emb1 - emb2  # Shape (B, E)
+        if self.rbf:
+            dist = torch.exp(-self.gamma * (dist - self.beta).pow(2).sum(-1)) # Shape (B, H)
+            out = dist @ self.weight # Shape (B, 1)
+        else:
+            out = -dist @ self.weight + self.bias  # Shape (B, 1)
+
+        return out # To get the pseudo-identity, we need to apply a sigmoid activation
+
+
 class ESMEncoder(nn.Module):
     def __init__(
         self,
@@ -172,7 +207,9 @@ class ESMEncoder(nn.Module):
         head_dim: int = 1280,
         head_depth: int = 0, # 0 = Linear projection
         proj_dim: int = 8,
-        use_clf_token: bool = False
+        use_clf_token: bool = False,
+        activation: int = 0, # 0 = No activation, otherwise the activation width
+        activation_rbf: bool = False, # If True, use RBF activation
     ):
         super().__init__()
         self.backbone = ESM(
@@ -200,13 +237,21 @@ class ESMEncoder(nn.Module):
             proj_dim=proj_dim,
             use_clf_token=use_clf_token
         )
+        if activation:
+            activation = activation if activation_rbf else proj_dim
+            self.activation = Activation(activation, rbf=activation_rbf)
+            self.norm_emb = False
+        else:
+            self.norm_emb = True
+
     def forward(self, tokens):
         z = self.backbone(tokens)  # Shape (B, T, E)
 
         emb = self.head(z)
 
         # Normalize the embeddings
-        emb = torch.nn.functional.normalize(emb, p=2, dim=1)
+        if self.norm_emb:
+            emb = torch.nn.functional.normalize(emb, p=2, dim=1)
         return emb
 
     @classmethod

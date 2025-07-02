@@ -4,7 +4,7 @@ from data.dataloader import make_dataloader
 from models import ESMEncoder
 from optimizers.optimizer import make_optimizer
 from training.train import train, evaluate
-from losses import Criterion
+from losses import Criterion, LateProjCriterion
 from schedulers.scheduler import make_scheduler
 from typing import Optional
 import shutil
@@ -111,8 +111,13 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     log("Model loaded successfully!")
 
     # Loading optimizer, loss and scheduler
-    loss = Criterion(loss_type=config["training"]["loss"])
-    loss.to(device)
+    if config["model"]["activation"] > 0:
+        log("Using Late Projection Loss")
+        loss = LateProjCriterion(model.activation, config["training"]["loss"])
+    else:
+        log("Using cosine similarity loss")
+        loss = Criterion(loss_type=config["training"]["loss"])
+        loss.to(device)
     optimizer = make_optimizer(model.parameters(),
                                loss.parameters(),
                                config["training"]["optimizer"],

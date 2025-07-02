@@ -1,1 +1,1 @@
-from .loss import Criterion
+from .loss import Criterion, LateProjCriterion
