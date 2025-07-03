@@ -2,7 +2,7 @@
 #SBATCH --array=0-5
 #SBATCH --output=logs/%x_%A_%a.log
 #SBATCH --error=logs/%x_%A_%a.log
-#SBATCH --time=6:00:00
+#SBATCH --time=5:00:00
 #SBATCH --mem=16Gb
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:1
