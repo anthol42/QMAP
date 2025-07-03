@@ -29,7 +29,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --verbose=2 $PARAM
+uv run main.py --experiment=experiment1 --config=configs/ESM_35M_late.yml --fract=0.1 --verbose=2 $PARAM
 
 echo "End time: $(date)"
 echo "Job completed"
