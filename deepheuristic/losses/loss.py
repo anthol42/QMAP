@@ -17,10 +17,11 @@ class Criterion(nn.Module):
             raise ValueError(f"Unknown loss type: {loss_type}")
 
 
-    def forward(self, pred, target):
+    def forward(self, pred1, pred2, target):
+        pred = (pred1.unsqueeze(1) @ pred2.unsqueeze(2)).squeeze(-1)
         # Normalize between 0 and 1 (Soft with PReLU) Because it is included in weight decay, it will converge to a relu
         pred = self.activation(pred)
-        return self.criterion(pred, target)
+        return self.criterion(pred, target), pred
 
 class LateProjCriterion(nn.Module):
     def __init__(self, activation: nn.Module, loss_type: Literal['MSE', 'BCE'] = 'MSE'):
@@ -38,6 +39,9 @@ class LateProjCriterion(nn.Module):
 
     def forward(self, pred1, pred2, target):
         score = self.activation(pred1, pred2)
-        if self.loss_type == "MSE":
-            score = F.sigmoid(score)
-        return self.criterion(score, target)
+        if self.loss_type == "BCE":
+            pred = torch.sigmoid(score)
+        else: # MSE
+            score = torch.sigmoid(score)
+            pred = score
+        return self.criterion(score, target), pred

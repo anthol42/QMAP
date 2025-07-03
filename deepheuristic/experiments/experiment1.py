@@ -10,7 +10,7 @@ from typing import Optional
 import shutil
 from utils import State, get_profile
 from utils.esm_alphabet import ESMAlphabet
-from deepboard.resultTable import ResultTable
+from deepboard.resultTable import ResultTable, NoCommitAction
 import utils
 from pyutils import Colors, ConfigFile
 from utils.bin import *
@@ -54,7 +54,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     hyper.update(kwargs)
 
     # Preparing Result Table
-    rtable = ResultTable("results/resultTable.db")
+    rtable = ResultTable("results/resultTable.db", nocommit_action=NoCommitAction.RAISE)
     if DEBUG:
         log(f"Running in {Colors.warning}DEBUG{Colors.reset} mode!")
         resultSocket = rtable.new_debug_run(utils.get_experiment_name(__name__), args.config, cli=hyper, comment=args.comment, disable=OPTUNA)
@@ -71,7 +71,11 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         head_dropout=config["model"]["head_dropout"],
         proj_dim=config["model"]["proj_dim"],
         head_depth=config["model"]["head_depth"],
-        pretrained=not args.randominit
+        pretrained=not args.randominit,
+        activation_dim=config["model"]["activation_dim"],
+        activation_nlayers=config["model"]["activation_nlayers"],
+        activation_agglomeration=config["model"]["activation_agglomeration"],
+        norm_embedding=config["model"]["norm_embedding"],
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -97,7 +101,11 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         head_dim = config["model"]["proj_dim"],
         head_depth = config["model"]["head_depth"],
         proj_dim = config["model"]["proj_dim"],
-        use_clf_token = config["model"]["use_clf_token"]
+        use_clf_token = config["model"]["use_clf_token"],
+        activation_dim=config["model"]["activation_dim"],
+        activation_nlayers=config["model"]["activation_nlayers"],
+        activation_agglomeration=config["model"]["activation_agglomeration"],
+        norm_embedding=config["model"]["norm_embedding"]
     )
     if not args.randominit:
         log("Loading pretrained weights")
@@ -111,7 +119,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     log("Model loaded successfully!")
 
     # Loading optimizer, loss and scheduler
-    if config["model"]["activation"] > 0:
+    if config["model"]["activation_dim"] > 0:
         log("Using Late Projection Loss")
         loss = LateProjCriterion(model.activation, config["training"]["loss"])
     else:
@@ -119,7 +127,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         loss = Criterion(loss_type=config["training"]["loss"])
         loss.to(device)
     optimizer = make_optimizer(model.parameters(),
-                               loss.parameters(),
+                               loss.parameters() if config["model"]["activation_dim"] == 0 else [],
                                config["training"]["optimizer"],
                                lr=config["training"]["lr"],
                                weight_decay=config["training"]["weight_decay"])
@@ -190,8 +198,6 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
                  for value in np.quantile(abs_error, labels)]
         rows = [[label, value] for label, value in zip(labels, quantiles)]
         html_table = utils.make_table(["Quantile", "Error"], rows)
-        with open('tmp.html', 'w') as f:
-            f.write(html_table)
 
         resultSocket.add_fragment(html_table, step=State.global_step, split="test", epoch=config["training"]["num_epochs"])
 

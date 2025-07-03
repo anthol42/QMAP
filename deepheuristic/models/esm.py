@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Literal
 from pyutils import ConfigFile
 from utils.esm_alphabet import ESMAlphabet
 from .modules import ESM1bLayerNorm, TransformerLayer
@@ -65,12 +65,17 @@ class FC_projector(nn.Module):
         # if layer.bias is not None:
         #     nn.init.constant_(layer.bias, 0.)
 
-    def forward(self, x):
+    def forward(self, x, padding_mask=None):
         # x: shape(B, T, D)
         if self.use_clf_token:
             x = x[:, 0]
         else:
-            x = x[:, 1:].mean(dim=1)
+            if padding_mask is not None:
+                padding_mask[:, 0] = True
+                value_mask = padding_mask.as_type(x.dtype)
+                x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
+            else:
+                x = x[:, 1:].mean(dim=1)
         return self.layers(x)
 class ESM(nn.Module):
     def __init__(
@@ -159,21 +164,32 @@ class ESM(nn.Module):
         return x
 
 class Activation(nn.Module):
-    def __init__(self, hidden_size: int = 512, rbf: bool = False):
+    def __init__(self, proj_dim: int, n_layers: int, agglomeration_type: Literal['mult', 'abs_diff', 'cat'] = 'mult'):
         """
-        If rbf is False, the hidden size must be the same as the embedding size.
-        :param hidden_size:
-        :param rbf:
+        Module used to compute the identity between two sequence from their vector representations.
         """
         super().__init__()
-        self.rbf = rbf
-        if self.rbf:
-            self.beta = nn.Parameter(0.1 * torch.randn((1, hidden_size)))
-            self.gamma = nn.Parameter((0.1 * torch.randn((1, hidden_size))) ** 2)
-        else:
-            self.bias = nn.Parameter(torch.zeros((1, 1)))
+        self.agglomeration = agglomeration_type
 
-        self.weight = nn.Parameter(0.01 * torch.randn((hidden_size, 1)))
+        if n_layers < 1:
+            raise ValueError('n_layers must be >= 1')
+
+        if agglomeration_type == 'cat':
+            proj_dim *= 2
+
+        if n_layers == 1:
+            self.layers = nn.Sequential(
+                nn.Linear(proj_dim, 2 * proj_dim),
+                nn.GELU(),
+                nn.Linear(2 * proj_dim, 1),
+            )
+        else:
+            self.layers = nn.Sequential(
+                nn.Linear(proj_dim, 2 * proj_dim),
+                nn.GELU(),
+                *[layer for _ in range(n_layers - 1) for layer in (nn.Linear(2 * proj_dim, 2 * proj_dim), nn.GELU())],
+                nn.Linear(2 * proj_dim, 1),
+            )
 
     def forward(self, emb1: torch.Tensor, emb2: torch.Tensor):
         """
@@ -182,14 +198,15 @@ class Activation(nn.Module):
         :param emb2: The second embedding tensor of shape (B, E)
         :return: (B, 1) tensor with the pseudo-identity (between 0 and 1)
         """
-
-        dist = emb1 - emb2  # Shape (B, E)
-        if self.rbf:
-            dist = torch.exp(-self.gamma * (dist - self.beta).pow(2).sum(-1)) # Shape (B, H)
-            out = dist @ self.weight # Shape (B, 1)
+        if self.agglomeration == 'mult':
+            dist = emb1 * emb2 # Shape (B, 2E)
+        elif self.agglomeration == 'abs_diff':
+            dist = (emb1 - emb2).abs()
+        elif self.agglomeration == 'cat':
+            dist = torch.cat((emb1, emb2), dim=-1)
         else:
-            out = -dist @ self.weight + self.bias  # Shape (B, 1)
-
+            raise NotImplementedError(f"Unknown agglomeration type: {self.agglomeration}")
+        out = self.layers(dist) # dist @ self.weight + self.bias  # Shape (B, 1)
         return out # To get the pseudo-identity, we need to apply a sigmoid activation
 
 
@@ -208,8 +225,10 @@ class ESMEncoder(nn.Module):
         head_depth: int = 0, # 0 = Linear projection
         proj_dim: int = 8,
         use_clf_token: bool = False,
-        activation: int = 0, # 0 = No activation, otherwise the activation width
-        activation_rbf: bool = False, # If True, use RBF activation
+        activation_dim: int = 0, # 0 = No activation, otherwise the activation width
+        activation_nlayers: int = 1,
+        activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult',
+        norm_embedding: bool = True,
     ):
         super().__init__()
         self.backbone = ESM(
@@ -219,7 +238,7 @@ class ESMEncoder(nn.Module):
             attention_heads=attention_heads,
             token_dropout=token_dropout,
             attention_dropout=attention_dropout,
-            layer_dropout=layer_dropout
+            layer_dropout=layer_dropout,
 
         )
         self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim,
@@ -235,19 +254,21 @@ class ESMEncoder(nn.Module):
             head_dim=head_dim,
             head_depth=head_depth,
             proj_dim=proj_dim,
-            use_clf_token=use_clf_token
+            activation_dim=activation_dim,
+            activation_nlayers=activation_nlayers,
+            activation_agglomeration=activation_agglomeration,
+            norm_embedding=norm_embedding,
         )
-        if activation:
-            activation = activation if activation_rbf else proj_dim
-            self.activation = Activation(activation, rbf=activation_rbf)
-            self.norm_emb = False
-        else:
-            self.norm_emb = True
+        if activation_dim:
+            self.activation = Activation(activation_dim, activation_nlayers, activation_agglomeration)
+
+        self.norm_emb = norm_embedding
 
     def forward(self, tokens):
+        padding_mask = tokens.eq(self.backbone.padding_idx)
         z = self.backbone(tokens)  # Shape (B, T, E)
 
-        emb = self.head(z)
+        emb = self.head(z, padding_mask=padding_mask)
 
         # Normalize the embeddings
         if self.norm_emb:

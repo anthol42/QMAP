@@ -28,20 +28,16 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
         # Training with possibility of mixed precision
         if scaler:
             with torch.autocast(device_type=str(device), dtype=torch.float16):
-                pred1 = model(seq1).unsqueeze(1) # Shape(B, 1, E)
-                pred2 = model(seq2).unsqueeze(2) # Shape(B, E, 1)
-                # Dot product of the vectors to get the predicted labels
-                pred = (pred1 @ pred2).squeeze(-1) # Shape(B, 1, 1) => Shape(B, 1)
-                loss = criterion(pred, label) # MSE loss between predicted and true labels
+                pred1 = model(seq1)
+                pred2 = model(seq2)
+                loss, pred = criterion(pred1, pred2, label) # MSE loss between predicted and true labels=
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
-            pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
-            pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
-            # Dot product of the vectors to get the predicted labels
-            pred = (pred1 @ pred2).squeeze(-1) # Shape(B, 1, 1) => Shape(B, 1)
-            loss = criterion(pred, label)  # MSE loss between predicted and true labels
+            pred1 = model(seq1)
+            pred2 = model(seq2)
+            loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
             loss.backward()
             optimizer.step()
 
@@ -64,7 +60,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
         # Report metrics
         if i % 100 == 0 and i > 0: # We ignore the first step
             State.resultSocket.add_scalar('Step/loss', metr["loss"], epoch=epoch, step=State.global_step)
-            State.resultSocket.add_scalar('Step/alpha', criterion.activation.weight.item(), epoch=epoch, step=State.global_step)
+            # State.resultSocket.add_scalar('Step/alpha', criterion.activation.weight.item(), epoch=epoch, step=State.global_step)
             for metric_name, value in metr.items():
                 if metric_name == "loss":
                     continue
@@ -96,11 +92,9 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
         seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
 
         # Evaluating
-        pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
-        pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
-        # Dot product of the vectors to get the predicted labels
-        pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
-        loss = criterion(pred, label)  # MSE loss between predicted and true labels
+        pred1 = model(seq1)
+        pred2 = model(seq2)
+        loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
 
         # Calculate metrics
         targets = label.detach().cpu()
@@ -180,12 +174,12 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
         seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
 
         # Evaluating
-        pred1 = model(seq1).unsqueeze(1)  # Shape(B, 1, E)
-        pred2 = model(seq2).unsqueeze(2)  # Shape(B, E, 1)
+        pred1 = model(seq1)
+        pred2 = model(seq2)
+        loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
+
         # Dot product of the vectors to get the predicted labels
-        pred = (pred1 @ pred2).squeeze(-1)  # Shape(B, 1, 1) => Shape(B, 1)
         all_preds.append(pred.detach().cpu())
-        loss = criterion(pred, label)  # MSE loss between predicted and true labels
 
         # Calculate metrics
         targets = label.detach().cpu()
