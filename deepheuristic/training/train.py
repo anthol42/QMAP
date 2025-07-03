@@ -196,6 +196,5 @@ def evaluate(model, dataloader, criterion, device, metrics: dict = None):
         )
 
     all_preds = torch.cat(all_preds)
-    all_preds = criterion.activation(all_preds.to(device)).cpu()
     # Report epochs metrics
     return dict(loss=lossCounter.compute(), **{k: v.compute() for k, v in metrics.items()}), all_preds

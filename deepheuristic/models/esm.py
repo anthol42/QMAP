@@ -71,11 +71,10 @@ class FC_projector(nn.Module):
             x = x[:, 0]
         else:
             if padding_mask is not None:
-                padding_mask[:, 0] = True
-                value_mask = padding_mask.as_type(x.dtype)
+                value_mask = padding_mask.to(x.dtype).unsqueeze(-1)
                 x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
             else:
-                x = x[:, 1:].mean(dim=1)
+                x = x.mean(dim=1)
         return self.layers(x)
 class ESM(nn.Module):
     def __init__(
