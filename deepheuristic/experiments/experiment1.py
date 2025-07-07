@@ -71,11 +71,16 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         head_dropout=config["model"]["head_dropout"],
         proj_dim=config["model"]["proj_dim"],
         head_depth=config["model"]["head_depth"],
+        head_dim=config["model"]["head_dim"],
         pretrained=not args.randominit,
         activation_dim=config["model"]["activation_dim"],
         activation_nlayers=config["model"]["activation_nlayers"],
         activation_agglomeration=config["model"]["activation_agglomeration"],
         norm_embedding=config["model"]["norm_embedding"],
+        head_norm=config["model"]["head_norm"],
+        prenorm=config["model"]["prenorm"],
+        linbranch=config["model"]["linbranch"],
+        head_residual=config["model"]["head_residual"],
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -98,14 +103,18 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         attention_dropout = config["model"]["attention_dropout"],
         layer_dropout = config["model"]["layer_dropout"],
         head_dropout = config["model"]["head_dropout"],
-        head_dim = config["model"]["proj_dim"],
+        head_dim = config["model"]["head_dim"] if config["model"]["head_dim"] > 0 else config["model"]["proj_dim"],
         head_depth = config["model"]["head_depth"],
         proj_dim = config["model"]["proj_dim"],
         use_clf_token = config["model"]["use_clf_token"],
         activation_dim=config["model"]["activation_dim"],
         activation_nlayers=config["model"]["activation_nlayers"],
         activation_agglomeration=config["model"]["activation_agglomeration"],
-        norm_embedding=config["model"]["norm_embedding"]
+        norm_embedding=config["model"]["norm_embedding"],
+        norm=config["model"]["head_norm"],
+        prenorm=config["model"]["prenorm"],
+        linbranch=config["model"]["linbranch"],
+        head_residual=config["model"]["head_residual"],
     )
     if not args.randominit:
         log("Loading pretrained weights")

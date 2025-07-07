@@ -27,12 +27,17 @@ config_format = ConfigFormat({
             "layer_dropout": Default(float, 0.),
             "head_dropout": float,
             "head_depth": Default(int, 0), # We default to a Linear projection
+            "head_dim": Default(int, 0), # By default, it is the proj dim (if 0)
             "proj_dim": int,
             "use_clf_token": Default(bool, True),
             "activation_dim": Default(int, 0),
             "activation_nlayers": Default(int, 1),
             "activation_agglomeration": Default(str, "mult"),
             "norm_embedding": Default(bool, True),
+            "head_norm": Default(str, "ESM"),
+            "prenorm": Default(bool, False),
+            "linbranch": Default(bool, False),
+            "head_residual": Default(bool, False),
         })
     ),
 })

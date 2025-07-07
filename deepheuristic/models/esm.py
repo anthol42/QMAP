@@ -16,46 +16,90 @@ class DropScaler(nn.Module):
         else:
             return X
 class FC_layer(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int, dropout: float):
+    def __init__(self, in_dim: int, out_dim: int, dropout: float,
+                 norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+                 prenorm: bool = False):
         super().__init__()
+        if norm is None:
+            norm = 'none'
+        match norm:
+            case 'Batch':
+                norm = nn.BatchNorm1d
+            case 'Layer':
+                norm = nn.LayerNorm
+            case 'ESM':
+                norm = ESM1bLayerNorm
+            case 'none':
+                norm = nn.Identity
+            case _:
+                raise ValueError(f'Unknown norm: {norm}')
+
         if dropout == 0:
-            self.layers = nn.Sequential(
-                nn.Linear(in_dim, out_dim),
-                ESM1bLayerNorm(out_dim),
-                nn.GELU(),
-            )
+            if prenorm:
+                self.layers = nn.Sequential(
+                    norm(in_dim),
+                    nn.Linear(in_dim, out_dim),
+                    nn.GELU(),
+                )
+            else:
+                self.layers = nn.Sequential(
+                    nn.Linear(in_dim, out_dim),
+                    norm(out_dim),
+                    nn.GELU(),
+                )
         else:
-            self.layers = nn.Sequential(
-                nn.Linear(in_dim, out_dim),
-                ESM1bLayerNorm(out_dim),
-                nn.GELU(),
-                nn.Dropout(dropout)
-            )
+            if prenorm:
+                self.layers = nn.Sequential(
+                    norm(in_dim),
+                    nn.Linear(in_dim, out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout)
+                )
+            else:
+                self.layers = nn.Sequential(
+                    nn.Linear(in_dim, out_dim),
+                    norm(out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout)
+                )
     def forward(self, x):
         return self.layers(x)
 
 
 class FC_projector(nn.Module):
     def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, dropout: float,
-                 use_clf_token: bool = False):
+                 use_clf_token: bool = False,
+                 norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+                 prenorm: bool = False,
+                 linbranch: bool = False,
+                 residual: bool = False,):
         super().__init__()
         if depth == 0:
-            self.layers = nn.Sequential(
-                nn.Linear(embed_dim, out_features)
+            self.layers = nn.ModuleList(
+                [nn.Linear(embed_dim, out_features)]
             )
         elif depth == 1:
-            self.layers = nn.Sequential(
-                FC_layer(embed_dim, latent_dim, dropout=0.),
+            self.layers = nn.ModuleList(
+                [
+                FC_layer(embed_dim, latent_dim, dropout=0., norm=norm, prenorm=prenorm),
                 nn.Linear(latent_dim, out_features)
+                ]
             )
         else:
-            self.layers = nn.Sequential(
-                FC_layer(embed_dim, latent_dim, dropout=dropout),
-                *[FC_layer(latent_dim, latent_dim, dropout) for _ in range(depth - 2)],
-                FC_layer(latent_dim, latent_dim, dropout=0.),
-                nn.Linear(latent_dim, out_features),
+            self.layers = nn.ModuleList(
+                [
+                FC_layer(embed_dim, latent_dim, dropout=dropout, norm=norm, prenorm=prenorm),
+                *[FC_layer(latent_dim, latent_dim, dropout, norm=norm, prenorm=prenorm) for _ in range(depth - 2)],
+                FC_layer(latent_dim, latent_dim, dropout=0., norm=norm, prenorm=prenorm),
+                nn.Linear(latent_dim, out_features)
+                 ]
             )
         self.use_clf_token = use_clf_token
+        if linbranch:
+            self.linbranch = nn.Linear(embed_dim, out_features)
+        else:
+            self.linbranch = None
+        self.isres = residual
         self._init()
 
     def _init(self):
@@ -75,7 +119,31 @@ class FC_projector(nn.Module):
                 x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
             else:
                 x = x.mean(dim=1)
-        return self.layers(x)
+        if self.isres:
+            out = self.res_forward(x)
+        else:
+            out = self.sequential(x)
+        if self.linbranch is not None:
+            linout = self.linbranch(x)
+            return out + linout
+        else:
+            return out
+
+    def res_forward(self, x):
+        h = self.layers[0](x) # Initial projection
+        for layer in self.layers[1:-1]:
+            residual = h
+            out = layer(h)
+            h = out + residual
+        if len(self.layers) > 1:
+            h = self.layers[-1](h) # Final proj
+        return h
+
+    def sequential(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
 class ESM(nn.Module):
     def __init__(
         self,
@@ -228,6 +296,10 @@ class ESMEncoder(nn.Module):
         activation_nlayers: int = 1,
         activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult',
         norm_embedding: bool = True,
+        norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+        prenorm: bool = False,
+        linbranch: bool = False,
+        head_residual: bool = False
     ):
         super().__init__()
         self.backbone = ESM(
@@ -241,7 +313,8 @@ class ESMEncoder(nn.Module):
 
         )
         self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim,
-                                      head_dropout, use_clf_token=use_clf_token)
+                                      head_dropout, use_clf_token=use_clf_token, norm=norm,
+                                 prenorm=prenorm, linbranch=linbranch, residual=head_residual)
         self.init_params = dict(
             num_layers=num_layers,
             embed_dim=embed_dim,
@@ -257,6 +330,10 @@ class ESMEncoder(nn.Module):
             activation_nlayers=activation_nlayers,
             activation_agglomeration=activation_agglomeration,
             norm_embedding=norm_embedding,
+            norm=norm,
+            prenorm=prenorm,
+            linbranch=linbranch,
+            head_residual=head_residual,
         )
         if activation_dim:
             self.activation = Activation(activation_dim, activation_nlayers, activation_agglomeration)
