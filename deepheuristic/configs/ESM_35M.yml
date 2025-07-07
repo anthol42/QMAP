@@ -10,6 +10,10 @@ training:
   loss: "MSE"
   optimizer: "AdamW"
   ema_beta: 0.
+  smoothness: 0.
+  diversity: 0.
+  var: 0.
+  orthogonality: 0.
 model:
   model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
   weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
@@ -18,7 +22,7 @@ model:
   embed_dim: 480
   num_layers: 12
   head_dropout: 0.
-  head_dim: 0
+  head_dim: 2
   proj_dim: 512
   head_depth: 0
   use_clf_token: False

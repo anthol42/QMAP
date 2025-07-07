@@ -84,7 +84,11 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         head_residual=config["model"]["head_residual"],
         learned_pooling=config["model"]["learned_pooling"],
         all_layers=config["model"]["all_layers"],
-        ema_beta=config["training"]["ema_beta"]
+        ema_beta=config["training"]["ema_beta"],
+        smoothness=config["training"]["smoothness"],
+        diversity=config["training"]["diversity"],
+        var=config["training"]["var"],
+        orthogonality=config["training"]["orthogonality"]
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -149,7 +153,13 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         loss = LateProjCriterion(model.activation, config["training"]["loss"])
     else:
         log("Using cosine similarity loss")
-        loss = Criterion(loss_type=config["training"]["loss"])
+        loss = Criterion(
+            loss_type=config["training"]["loss"],
+            smoothness=config["training"]["smoothness"],
+            diversity=config["training"]["diversity"],
+            var=config["training"]["var"],
+            orthogonality=config["training"]["orthogonality"],
+        )
         loss.to(device)
     optimizer = make_optimizer(model.parameters(),
                                loss.parameters() if config["model"]["activation_dim"] == 0 else [],

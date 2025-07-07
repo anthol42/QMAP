@@ -3,8 +3,11 @@ import torch.nn.functional as F
 from torch import nn
 from typing import Optional, Literal
 
+from .functional import diversity_loss, variance_diversity_loss, orthogonality_loss, smoothness
+
 class Criterion(nn.Module):
-    def __init__(self, loss_type: Literal['MSE', 'BCE'] = 'MSE'):
+    def __init__(self, loss_type: Literal['MSE', 'BCE'] = 'MSE', diversity: float = 0., var: float = 0.,
+                 orthogonality: float = 0., smoothness: float = 0.):
         super().__init__()
         self.loss_type = loss_type
         if loss_type == "MSE":
@@ -16,12 +19,32 @@ class Criterion(nn.Module):
         else:
             raise ValueError(f"Unknown loss type: {loss_type}")
 
+        self.diversity = diversity
+        self.var = var
+        self.orthogonality = orthogonality
+        self.smoothness = smoothness
+
 
     def forward(self, pred1, pred2, target):
         pred = (pred1.unsqueeze(1) @ pred2.unsqueeze(2)).squeeze(-1)
         # Normalize between 0 and 1 (Soft with PReLU) Because it is included in weight decay, it will converge to a relu
         pred = self.activation(pred)
-        return self.criterion(pred, target), pred
+        loss = self.criterion(pred, target)
+        embs = torch.cat([pred1, pred2], dim=0)
+        if self.smoothness > 0:
+            added = self.smoothness * 0.5 * smoothness(pred1, pred2, target)
+            print(added)
+            loss += added
+        if self.diversity > 0:
+            added = self.diversity * diversity_loss(embs)
+            loss += added
+        if self.var > 0:
+            added = self.var * 5 * variance_diversity_loss(embs) # Multiply by 5 to be in the same order as the loss
+            loss += added
+        if self.orthogonality > 0:
+            added = self.orthogonality * 100 * orthogonality_loss(embs) # Multiply by 100 to be in the same order as the loss
+            loss += added
+        return loss, pred
 
 class LateProjCriterion(nn.Module):
     def __init__(self, activation: nn.Module, loss_type: Literal['MSE', 'BCE'] = 'MSE'):
