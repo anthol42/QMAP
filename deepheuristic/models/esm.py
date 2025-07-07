@@ -67,13 +67,15 @@ class FC_layer(nn.Module):
 
 
 class FC_projector(nn.Module):
-    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, dropout: float,
+    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, max_length: int, dropout: float,
                  use_clf_token: bool = False,
                  norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
                  prenorm: bool = False,
                  linbranch: bool = False,
-                 residual: bool = False,):
+                 residual: bool = False,
+                 learned_pooling = False):
         super().__init__()
+        self.max_length = max_length
         if depth == 0:
             self.layers = nn.ModuleList(
                 [nn.Linear(embed_dim, out_features)]
@@ -99,6 +101,10 @@ class FC_projector(nn.Module):
             self.linbranch = nn.Linear(embed_dim, out_features)
         else:
             self.linbranch = None
+        if learned_pooling:
+            self.pooling_param = nn.Parameter(torch.ones(max_length, 1)) # Start as normal mean
+        else:
+            self.pooling_param = None
         self.isres = residual
         self._init()
 
@@ -111,13 +117,18 @@ class FC_projector(nn.Module):
 
     def forward(self, x, padding_mask=None):
         # x: shape(B, T, D)
+        L = x.shape[1]
         if self.use_clf_token:
             x = x[:, 0]
         else:
             if padding_mask is not None:
                 value_mask = padding_mask.to(x.dtype).unsqueeze(-1)
+                if self.pooling_param is not None:
+                    x = self.pooling_param[:L] * x
                 x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
             else:
+                if self.pooling_param is not None:
+                    x = self.pooling_param[:L] * x
                 x = x.mean(dim=1)
         if self.isres:
             out = self.res_forward(x)
@@ -299,7 +310,8 @@ class ESMEncoder(nn.Module):
         norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
         prenorm: bool = False,
         linbranch: bool = False,
-        head_residual: bool = False
+        head_residual: bool = False,
+        learned_pooling: bool = False,
     ):
         super().__init__()
         self.backbone = ESM(
@@ -312,9 +324,10 @@ class ESMEncoder(nn.Module):
             layer_dropout=layer_dropout,
 
         )
-        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim,
+        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim, 102,
                                       head_dropout, use_clf_token=use_clf_token, norm=norm,
-                                 prenorm=prenorm, linbranch=linbranch, residual=head_residual)
+                                 prenorm=prenorm, linbranch=linbranch, residual=head_residual,
+                                 learned_pooling=learned_pooling)
         self.init_params = dict(
             num_layers=num_layers,
             embed_dim=embed_dim,

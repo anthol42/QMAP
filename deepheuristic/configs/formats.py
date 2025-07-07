@@ -38,6 +38,7 @@ config_format = ConfigFormat({
             "prenorm": Default(bool, False),
             "linbranch": Default(bool, False),
             "head_residual": Default(bool, False),
+            "learned_pooling": Default(bool, False),
         })
     ),
 })
