@@ -392,6 +392,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ema-pytorch"
+version = "0.7.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/81/c78532837a00578dfe752d0cedab3fe68f97b055c2b55a2c3962555a5eaa/ema_pytorch-0.7.7.tar.gz", hash = "sha256:ecce0e3439e03c00f95a253d6f15ada415fcab09c2c0bd15f30349d375c69ad7", size = 9762, upload-time = "2024-12-03T21:57:17.749Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/41/7b35da1fce71ec7f9266992a6d6a918a09b435eaf0929ba1dd5375003537/ema_pytorch-0.7.7-py3-none-any.whl", hash = "sha256:320b68ac33136b558a31cb383f8183aae57f7e9d92166d6f072410df8b0a00de", size = 9807, upload-time = "2024-12-03T21:57:16.759Z" },
+]
+
+[[package]]
 name = "executing"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2026,6 +2038,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "antho-utils" },
     { name = "deepboard", extra = ["full"] },
+    { name = "ema-pytorch" },
     { name = "fair-esm" },
     { name = "jupyter" },
     { name = "matplotlib" },
@@ -2046,6 +2059,7 @@ dependencies = [
 requires-dist = [
     { name = "antho-utils", specifier = ">=0.1.0" },
     { name = "deepboard", extras = ["full"], specifier = ">=0.2.3" },
+    { name = "ema-pytorch", specifier = ">=0.7.7" },
     { name = "fair-esm", specifier = ">=2.0.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "matplotlib", specifier = ">=3.10.3" },

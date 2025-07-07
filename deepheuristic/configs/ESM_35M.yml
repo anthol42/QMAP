@@ -9,6 +9,7 @@ training:
   weight_decay:  0.
   loss: "MSE"
   optimizer: "AdamW"
+  ema_beta: 0.
 model:
   model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
   weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]

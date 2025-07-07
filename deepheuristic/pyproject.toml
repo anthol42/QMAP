@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "antho-utils>=0.1.0",
     "deepboard[full]>=0.2.3",
+    "ema-pytorch>=0.7.7",
     "fair-esm>=2.0.0",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.3",

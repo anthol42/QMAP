@@ -5,7 +5,7 @@
 - [X] Try pre- and post-norm
 - [X] Learned pooling to produce the final weight representation
 - [X] Use multiple layers to produce the final embedding
-- [ ] EMA
+- [X] EMA
 - [ ] Regularization
   - [ ] Embedding diversity: Add a loss term to encourage the embeddings to spread in the full space (Example: cosine-based between embeddings in batch or variance feature wise - maximize var)
   - [ ] Orthogonality regularization: Add a loss term that encourages the model to produce uncorrelated features based on the covariance matrix

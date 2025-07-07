@@ -13,6 +13,7 @@ from utils.esm_alphabet import ESMAlphabet
 from deepboard.resultTable import ResultTable, NoCommitAction
 import utils
 from pyutils import Colors, ConfigFile
+from ema_pytorch import EMA
 from utils.bin import *
 from torchmetrics import MeanAbsoluteError, PearsonCorrCoef
 from torchinfo import summary
@@ -82,7 +83,8 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         linbranch=config["model"]["linbranch"],
         head_residual=config["model"]["head_residual"],
         learned_pooling=config["model"]["learned_pooling"],
-        all_layers=config["model"]["all_layers"]
+        all_layers=config["model"]["all_layers"],
+        ema_beta=config["training"]["ema_beta"]
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -120,11 +122,21 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         learned_pooling=config["model"]["learned_pooling"],
         all_layers=config["model"]["all_layers"],
     )
+    if config["training"]["ema_beta"] != 0:
+        ema_model = EMA(
+            model,
+            beta = config["training"]["ema_beta"],              # exponential moving average factor
+            update_after_step = 500,    # only after this number of .update() calls will it start updating
+            update_every = 10,
+        )
+    else:
+        ema_model = None
     if not args.randominit:
         log("Loading pretrained weights")
         size = config["model"]["name"].split("_")[-1]
         utils.load_weights(model.backbone, size, config["model"]["weights_path"])
     model.to(device)
+    ema_model and ema_model.to(device)
     if args.verbose >= 3:
         B = config["data"]["batch_size"]
         L = 100 # Max length of the sequence
@@ -157,6 +169,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     log(f"Watching: {args.watch}")
     train(
         model=model,
+        ema_model=ema_model,
         optimizer=optimizer,
         train_loader=train_loader,
         val_loader=val_loader,
@@ -180,9 +193,11 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     model.load_state_dict(weights)
     # Test
     if OPTUNA:
-        results, all_preds = evaluate(model, val_loader, loss, device, metrics=metrics)
+        results, all_preds = evaluate(ema_model if ema_model is not None else model,
+                                      val_loader, loss, device, metrics=metrics)
     else:
-        results, all_preds = evaluate(model, test_loader, loss, device, metrics=metrics)
+        results, all_preds = evaluate(ema_model if ema_model is not None else model,
+                                      test_loader, loss, device, metrics=metrics)
         log("Training done!  Saving...")
 
         # Prediction range
@@ -217,6 +232,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         save_dict = {
             "epoch": config["training"]["num_epochs"],
             "model_state_dict": model.state_dict(),
+            "ema_state_dict": ema_model.state_dict() if ema_model is not None else None,
             "activation": loss.activation.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "test_results": results,

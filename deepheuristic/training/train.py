@@ -6,7 +6,7 @@ from utils import State, DynamicMetric, format_metrics
 from typing import *
 from utils.bin import *
 
-def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, scheduler=None, scaler=None,
+def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, device, scheduler=None, scaler=None,
                     metrics: dict = None, sample_inputs: Optional[str] = None):
     if metrics is None:
         metrics = {}
@@ -40,7 +40,7 @@ def train_one_epoch(dataloader, model, optimizer, criterion, epoch, device, sche
             loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
             loss.backward()
             optimizer.step()
-
+        ema_model and ema_model.update()
         State.global_step += 1
 
         if scheduler:
@@ -119,7 +119,7 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
     last_valid["loss"] = lossCounter.compute()
     State.last_valid = last_valid
 
-def train(model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, scheduler=None,
+def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, scheduler=None,
           metrics: dict = None, noscaler: bool = False, watch: str = "accuracy", sample_inputs: Optional[str] = None,
           optuna_trial: Optional[optuna.Trial] = None,
           verbose: int = 3):
@@ -143,10 +143,11 @@ def train(model, optimizer, train_loader, val_loader, criterion, num_epochs, dev
 
         # Train the epoch and validate
         train_one_epoch(
-            train_loader, model, optimizer, criterion, epoch, device, scheduler, scaler, metrics, sample_inputs=sample_inputs
+            train_loader, model, ema_model, optimizer, criterion, epoch, device, scheduler, scaler, metrics, sample_inputs=sample_inputs
         )
         validation_step(
-            model, val_loader, criterion, epoch, device, metrics, verbose == 3
+            ema_model if ema_model is not None else model,
+            val_loader, criterion, epoch, device, metrics, verbose == 3
         )
 
         if optuna_trial is not None:

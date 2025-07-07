@@ -13,6 +13,7 @@ config_format = ConfigFormat({
         "weight_decay": float,
         "loss": str, # MSE or BCE
         "optimizer": str, # Adam or AdamW
+        "ema_beta": Default(float, 0.)
     },
     "model":Options(
         Option("ESM")({
