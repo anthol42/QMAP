@@ -82,6 +82,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         linbranch=config["model"]["linbranch"],
         head_residual=config["model"]["head_residual"],
         learned_pooling=config["model"]["learned_pooling"],
+        all_layers=config["model"]["all_layers"]
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -117,6 +118,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         linbranch=config["model"]["linbranch"],
         head_residual=config["model"]["head_residual"],
         learned_pooling=config["model"]["learned_pooling"],
+        all_layers=config["model"]["all_layers"],
     )
     if not args.randominit:
         log("Loading pretrained weights")

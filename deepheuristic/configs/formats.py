@@ -39,6 +39,7 @@ config_format = ConfigFormat({
             "linbranch": Default(bool, False),
             "head_residual": Default(bool, False),
             "learned_pooling": Default(bool, False),
+            "all_layers": Default(bool, False),
         })
     ),
 })

@@ -3,8 +3,8 @@
 ## TODO
 - [X] Different norm and no norm in MLP head
 - [X] Try pre- and post-norm
-- [ ] Learned pooling to produce the final weight representation
-- [ ] Use multiple layers to produce the final embedding
+- [X] Learned pooling to produce the final weight representation
+- [X] Use multiple layers to produce the final embedding
 - [ ] EMA
 - [ ] Regularization
   - [ ] Embedding diversity: Add a loss term to encourage the embeddings to spread in the full space (Example: cosine-based between embeddings in batch or variance feature wise - maximize var)

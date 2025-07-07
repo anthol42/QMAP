@@ -24,3 +24,5 @@ model:
   head_norm: ESM
   linbranch: True
   learned_pooling: False
+  all_layers: False
+  

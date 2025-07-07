@@ -67,15 +67,20 @@ class FC_layer(nn.Module):
 
 
 class FC_projector(nn.Module):
-    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, max_length: int, dropout: float,
+    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, max_length: int,
+                 n_encoder_layers: int, dropout: float,
                  use_clf_token: bool = False,
                  norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
                  prenorm: bool = False,
                  linbranch: bool = False,
                  residual: bool = False,
-                 learned_pooling = False):
+                 learned_pooling = False,
+                 all_layers: bool = False,
+                 ):
         super().__init__()
         self.max_length = max_length
+        self.n_encoder_layers = n_encoder_layers
+        self.all_layers = all_layers
         if depth == 0:
             self.layers = nn.ModuleList(
                 [nn.Linear(embed_dim, out_features)]
@@ -105,6 +110,11 @@ class FC_projector(nn.Module):
             self.pooling_param = nn.Parameter(torch.ones(max_length, 1)) # Start as normal mean
         else:
             self.pooling_param = None
+
+        if self.all_layers:
+            self.layer_weight = nn.Parameter(torch.ones(n_encoder_layers, 1, 1, 1) / n_encoder_layers)
+        else:
+            self.layer_weight = None
         self.isres = residual
         self._init()
 
@@ -116,8 +126,12 @@ class FC_projector(nn.Module):
         #     nn.init.constant_(layer.bias, 0.)
 
     def forward(self, x, padding_mask=None):
-        # x: shape(B, T, D)
-        L = x.shape[1]
+        # x: shape(N, B, T, D) where N is the number of layers
+        L = x.shape[2]
+        if self.all_layers:
+            x = (self.layer_weight * x).sum(dim=0)
+        else:
+            x = x[-1]
         if self.use_clf_token:
             x = x[:, 0]
         else:
@@ -231,15 +245,19 @@ class ESM(nn.Module):
         if not padding_mask.any():
             padding_mask = None
 
+        all_activations = []
         for layer_idx, layer in enumerate(self.layers):
             x = layer(
                 x,
                 self_attn_padding_mask=padding_mask,
-            )
+            ) # Shape(T, B, E)
+            all_activations.append(x.transpose(0, 1)) # (T, B, E) => (B, T, E)
 
         x = self.emb_layer_norm_after(x)
         x = x.transpose(0, 1)  # (T, B, E) => (B, T, E)
-        return x
+        all_activations[-1] = x
+
+        return torch.stack(all_activations, dim=0)
 
 class Activation(nn.Module):
     def __init__(self, proj_dim: int, n_layers: int, agglomeration_type: Literal['mult', 'abs_diff', 'cat'] = 'mult'):
@@ -312,6 +330,7 @@ class ESMEncoder(nn.Module):
         linbranch: bool = False,
         head_residual: bool = False,
         learned_pooling: bool = False,
+        all_layers: bool = False
     ):
         super().__init__()
         self.backbone = ESM(
@@ -324,10 +343,10 @@ class ESMEncoder(nn.Module):
             layer_dropout=layer_dropout,
 
         )
-        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim, 102,
+        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim, 102, num_layers,
                                       head_dropout, use_clf_token=use_clf_token, norm=norm,
                                  prenorm=prenorm, linbranch=linbranch, residual=head_residual,
-                                 learned_pooling=learned_pooling)
+                                 learned_pooling=learned_pooling, all_layers=all_layers)
         self.init_params = dict(
             num_layers=num_layers,
             embed_dim=embed_dim,
