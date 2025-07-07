@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from typing import Optional, Literal
 
-from .functional import diversity_loss, variance_diversity_loss, orthogonality_loss, smoothness
+from .functional import diversity_loss, variance_diversity_loss, orthogonality_loss
 
 class Criterion(nn.Module):
     def __init__(self, loss_type: Literal['MSE', 'BCE'] = 'MSE', diversity: float = 0., var: float = 0.,
@@ -23,7 +23,8 @@ class Criterion(nn.Module):
         self.var = var
         self.orthogonality = orthogonality
         self.smoothness = smoothness
-
+        if smoothness > 0:
+            self.smooth_activation = nn.PReLU(init=0.25)
 
     def forward(self, pred1, pred2, target):
         pred = (pred1.unsqueeze(1) @ pred2.unsqueeze(2)).squeeze(-1)
@@ -32,8 +33,9 @@ class Criterion(nn.Module):
         loss = self.criterion(pred, target)
         embs = torch.cat([pred1, pred2], dim=0)
         if self.smoothness > 0:
-            added = self.smoothness * 0.5 * smoothness(pred1, pred2, target)
-            print(added)
+            l2 = torch.norm(pred1 - pred2, p=2, dim=1)
+            activated = self.smooth_activation(l2)
+            added = self.smoothness * ((activated - target)**2).mean()
             loss += added
         if self.diversity > 0:
             added = self.diversity * diversity_loss(embs)

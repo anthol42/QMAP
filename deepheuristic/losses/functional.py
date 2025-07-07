@@ -44,20 +44,3 @@ def orthogonality_loss(embeddings):
     off_diagonal_loss = torch.mean(torch.abs(cov_matrix[off_diagonal_mask]))
 
     return off_diagonal_loss
-
-
-def smoothness(embeddings1, embeddings2, identities):
-    """
-    Compute at what point the cosine distance is correlated with the l2 distance between the embeddings.
-    """
-    l2 = torch.norm(embeddings1 - embeddings2, dim=1)
-
-    # We want high identity to correspond to low L2 distance
-    target_distances = 1 - identities
-
-    # Normalize both to the same scale
-    # print(target_distances.mean() / l2.abs().mean())
-    l2_norm = l2 * 0.5 # target_distances.mean() / l2.abs().mean()
-
-    mse = torch.mean((l2_norm - target_distances) ** 2)
-    return mse
