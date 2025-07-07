@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=0-3
+#SBATCH --array=0-2
 #SBATCH --output=logs/%x_%A_%a.log
 #SBATCH --error=logs/%x_%A_%a.log
 #SBATCH --time=2:40:00
