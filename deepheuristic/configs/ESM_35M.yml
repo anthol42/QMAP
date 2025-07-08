@@ -28,7 +28,7 @@ model:
   use_clf_token: False
   head_norm: none
   linbranch: True
-  head_residual: False
+  head_residual: True # Helps generalization with head_depth = 2
   learned_pooling: False
   all_layers: False
   
