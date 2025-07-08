@@ -46,12 +46,13 @@ class SaveBestModel:
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-    def __call__(self, current_val, epoch, model, optimizer, criterion: torch.nn.Module, outputMessage=""):
+    def __call__(self, current_val, epoch, model, ema_model, optimizer, criterion: torch.nn.Module, outputMessage=""):
         """
         Call after each epoch
         :param current_val: Current metric value
         :param epoch: the current epoch
         :param model: the model to save
+        :param ema_model: the ema model to save
         :param optimizer: the optimizer
         :param criterion: the loss object
         :param outputMessage: the message to output when the model is saved.
@@ -67,6 +68,7 @@ class SaveBestModel:
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
+                    'ema_state_dict': ema_model.state_dict() if ema_model is not None else None,
                     'optimizer_state_dict': optimizer.state_dict(),
                     'activation': criterion.activation.state_dict(),
                     'metric':current_val,
@@ -82,6 +84,7 @@ class SaveBestModel:
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
+                    'ema_state_dict': ema_model.state_dict() if ema_model is not None else None,
                     'optimizer_state_dict': optimizer.state_dict(),
                     'activation': criterion.activation.state_dict(),
                     'metric':current_val,

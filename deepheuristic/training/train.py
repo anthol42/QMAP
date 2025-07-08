@@ -157,7 +157,7 @@ def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_
                 raise optuna.TrialPruned()
 
         # Checkpoint
-        save_best_model(State.last_valid[watch], epoch, model, optimizer, criterion)
+        save_best_model(State.last_valid[watch], epoch, model, ema_model, optimizer, criterion)
 
 @torch.inference_mode()
 def evaluate(model, dataloader, criterion, device, metrics: dict = None):

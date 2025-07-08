@@ -198,15 +198,16 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
 
     # Load best model
     log("Loading best model")
-    weights = torch.load(f'{config["model"]["model_dir"]}/{config["model"]["name"]}.pth', weights_only=False)[
-        "model_state_dict"]
-    model.load_state_dict(weights)
+    checkpoint = torch.load(f'{config["model"]["model_dir"]}/{config["model"]["name"]}.pth', weights_only=False)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    ema_model and log("Loading best ema model")
+    ema_model and ema_model.load_state_dict(checkpoint["ema_state_dict"])
     # Test
     if OPTUNA:
-        results, all_preds = evaluate(ema_model if ema_model is not None else model,
+        results, all_preds = evaluate(ema_model or model,
                                       val_loader, loss, device, metrics=metrics)
     else:
-        results, all_preds = evaluate(ema_model if ema_model is not None else model,
+        results, all_preds = evaluate(ema_model or model,
                                       test_loader, loss, device, metrics=metrics)
         log("Training done!  Saving...")
 
