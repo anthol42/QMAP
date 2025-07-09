@@ -15,7 +15,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --verbose=2 --config.model.all_layers=True --config.training.ema_beta=0.9999
+uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --fract=0.1 --verbose=2 --config.model.all_layers=False --config.training.ema_beta=0.9999
 
 echo "End time: $(date)"
 echo "Job completed"
