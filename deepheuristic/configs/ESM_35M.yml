@@ -9,7 +9,7 @@ training:
   weight_decay:  0.
   loss: "MSE"
   optimizer: "AdamW"
-  ema_beta: 0.
+  ema_beta: 0.9999
   smoothness: 0.
   diversity: 0.
   var: 0.
@@ -30,5 +30,5 @@ model:
   linbranch: True
   head_residual: True # Helps generalization with head_depth = 2
   learned_pooling: False
-  all_layers: False
+  all_layers: True
   
