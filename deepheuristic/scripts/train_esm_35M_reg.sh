@@ -10,31 +10,14 @@
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
-# Define parameter values (Linbranch is set to true in config)
 PARAMS=(
-  "--config.training.smoothness=0.001"
-  "--config.training.smoothness=0.005"
-  "--config.training.smoothness=0.01"
-  "--config.training.smoothness=0.05"
-  "--config.training.smoothness=0.1"
+  "--config.training.orthogonality=0.05 --config.training.diversity=0.001"
 
-  "--config.training.diversity=0.001"
-  "--config.training.diversity=0.005"
-  "--config.training.diversity=0.01"
-  "--config.training.diversity=0.05"
-  "--config.training.diversity=0.1"
+  "--config.training.orthogonality=0.05 --config.training.diversity=0.001 --config.training.var=0.1"
 
-  "--config.training.var=0.001"
-  "--config.training.var=0.005"
-  "--config.training.var=0.01"
-  "--config.training.var=0.05"
-  "--config.training.var=0.1"
+  "--config.training.orthogonality=0.05 --config.training.diversity=0.001 --config.training.smoothness=0.01"
 
-  "--config.training.orthogonality=0.001"
-  "--config.training.orthogonality=0.005"
-  "--config.training.orthogonality=0.01"
-  "--config.training.orthogonality=0.05"
-  "--config.training.orthogonality=0.1"
+  "--config.training.orthogonality=0.05 --config.training.diversity=0.001 --config.training.smoothness=0.01 --config.training.var=0.1"
 )
 
 # Get the parameter for this array task
