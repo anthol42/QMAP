@@ -12,6 +12,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/45/fc/2a1bf6c92a17a07db28f3730a57d9193595d47d4879468d03732fcaf846e/antho_utils-0.1.0.tar.gz", hash = "sha256:6648046bb5de7cd251fa0cd9e22f3b75710d25aaefeb6627ab2d7173416aa8ae", size = 24683, upload-time = "2025-05-06T19:29:26.517Z" }
 
 [[package]]
+name = "ema-pytorch"
+version = "0.7.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/81/c78532837a00578dfe752d0cedab3fe68f97b055c2b55a2c3962555a5eaa/ema_pytorch-0.7.7.tar.gz", hash = "sha256:ecce0e3439e03c00f95a253d6f15ada415fcab09c2c0bd15f30349d375c69ad7", size = 9762, upload-time = "2024-12-03T21:57:17.749Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/41/7b35da1fce71ec7f9266992a6d6a918a09b435eaf0929ba1dd5375003537/ema_pytorch-0.7.7-py3-none-any.whl", hash = "sha256:320b68ac33136b558a31cb383f8183aae57f7e9d92166d6f072410df8b0a00de", size = 9807, upload-time = "2024-12-03T21:57:16.759Z" },
+]
+
+[[package]]
 name = "filelock"
 version = "3.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -273,6 +285,7 @@ version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "antho-utils" },
+    { name = "ema-pytorch" },
     { name = "numpy" },
     { name = "torch" },
 ]
@@ -280,6 +293,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "antho-utils", specifier = ">=0.1.0" },
+    { name = "ema-pytorch", specifier = ">=0.7.7" },
     { name = "numpy", specifier = ">=2.3.1" },
     { name = "torch", specifier = ">=2.7.1" },
 ]

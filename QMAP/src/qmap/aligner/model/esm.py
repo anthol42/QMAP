@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Literal
 from pyutils import ConfigFile
 from .esm_alphabet import ESMAlphabet
 from .modules import ESM1bLayerNorm, TransformerLayer
@@ -16,46 +16,106 @@ class DropScaler(nn.Module):
         else:
             return X
 class FC_layer(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int, dropout: float):
+    def __init__(self, in_dim: int, out_dim: int, dropout: float,
+                 norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+                 prenorm: bool = False):
         super().__init__()
+        if norm is None:
+            norm = 'none'
+        match norm:
+            case 'Batch':
+                norm = nn.BatchNorm1d
+            case 'Layer':
+                norm = nn.LayerNorm
+            case 'ESM':
+                norm = ESM1bLayerNorm
+            case 'none':
+                norm = nn.Identity
+            case _:
+                raise ValueError(f'Unknown norm: {norm}')
+
         if dropout == 0:
-            self.layers = nn.Sequential(
-                nn.Linear(in_dim, out_dim),
-                ESM1bLayerNorm(out_dim),
-                nn.GELU(),
-            )
+            if prenorm:
+                self.layers = nn.Sequential(
+                    norm(in_dim),
+                    nn.Linear(in_dim, out_dim),
+                    nn.GELU(),
+                )
+            else:
+                self.layers = nn.Sequential(
+                    nn.Linear(in_dim, out_dim),
+                    norm(out_dim),
+                    nn.GELU(),
+                )
         else:
-            self.layers = nn.Sequential(
-                nn.Linear(in_dim, out_dim),
-                ESM1bLayerNorm(out_dim),
-                nn.GELU(),
-                nn.Dropout(dropout)
-            )
+            if prenorm:
+                self.layers = nn.Sequential(
+                    norm(in_dim),
+                    nn.Linear(in_dim, out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout)
+                )
+            else:
+                self.layers = nn.Sequential(
+                    nn.Linear(in_dim, out_dim),
+                    norm(out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout)
+                )
     def forward(self, x):
         return self.layers(x)
 
 
 class FC_projector(nn.Module):
-    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, dropout: float,
-                 use_clf_token: bool = False):
+    def __init__(self, depth: int, embed_dim: int, latent_dim: int, out_features: int, max_length: int,
+                 n_encoder_layers: int, dropout: float,
+                 use_clf_token: bool = False,
+                 norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+                 prenorm: bool = False,
+                 linbranch: bool = False,
+                 residual: bool = False,
+                 learned_pooling = False,
+                 all_layers: bool = False,
+                 ):
         super().__init__()
+        self.max_length = max_length
+        self.n_encoder_layers = n_encoder_layers
+        self.all_layers = all_layers
         if depth == 0:
-            self.layers = nn.Sequential(
-                nn.Linear(embed_dim, out_features)
+            self.layers = nn.ModuleList(
+                [nn.Linear(embed_dim, out_features)]
             )
         elif depth == 1:
-            self.layers = nn.Sequential(
-                FC_layer(embed_dim, latent_dim, dropout=0.),
+            self.layers = nn.ModuleList(
+                [
+                FC_layer(embed_dim, latent_dim, dropout=0., norm=norm, prenorm=prenorm),
                 nn.Linear(latent_dim, out_features)
+                ]
             )
         else:
-            self.layers = nn.Sequential(
-                FC_layer(embed_dim, latent_dim, dropout=dropout),
-                *[FC_layer(latent_dim, latent_dim, dropout) for _ in range(depth - 2)],
-                FC_layer(latent_dim, latent_dim, dropout=0.),
-                nn.Linear(latent_dim, out_features),
+            self.layers = nn.ModuleList(
+                [
+                FC_layer(embed_dim, latent_dim, dropout=dropout, norm=norm, prenorm=prenorm),
+                *[FC_layer(latent_dim, latent_dim, dropout, norm=norm, prenorm=prenorm) for _ in range(depth - 2)],
+                FC_layer(latent_dim, latent_dim, dropout=0., norm=norm, prenorm=prenorm),
+                nn.Linear(latent_dim, out_features)
+                 ]
             )
         self.use_clf_token = use_clf_token
+        if linbranch:
+            self.linbranch = nn.Linear(embed_dim, out_features)
+        else:
+            self.linbranch = None
+        if learned_pooling:
+            self.pooling_param = nn.Parameter(torch.ones(max_length, 1)) # Start as normal mean
+        else:
+            self.pooling_param = None
+
+        if self.all_layers:
+            self.layer_weight = nn.Parameter(torch.ones(n_encoder_layers, 1, 1, 1) / n_encoder_layers)
+        else:
+            self.layer_weight = None
+        self.isres = residual
         self._init()
 
     def _init(self):
@@ -65,13 +125,50 @@ class FC_projector(nn.Module):
         # if layer.bias is not None:
         #     nn.init.constant_(layer.bias, 0.)
 
-    def forward(self, x):
-        # x: shape(B, T, D)
+    def forward(self, x, padding_mask=None):
+        # x: shape(N, B, T, D) where N is the number of layers
+        L = x.shape[2]
+        if self.all_layers:
+            x = (self.layer_weight * x).sum(dim=0)
+        else:
+            x = x[-1]
         if self.use_clf_token:
             x = x[:, 0]
         else:
-            x = x[:, 1:].mean(dim=1)
-        return self.layers(x)
+            if padding_mask is not None:
+                value_mask = padding_mask.to(x.dtype).unsqueeze(-1)
+                if self.pooling_param is not None:
+                    x = self.pooling_param[:L] * x
+                x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
+            else:
+                if self.pooling_param is not None:
+                    x = self.pooling_param[:L] * x
+                x = x.mean(dim=1)
+        if self.isres:
+            out = self.res_forward(x)
+        else:
+            out = self.sequential(x)
+        if self.linbranch is not None:
+            linout = self.linbranch(x)
+            return out + linout
+        else:
+            return out
+
+    def res_forward(self, x):
+        h = self.layers[0](x) # Initial projection
+        for layer in self.layers[1:-1]:
+            residual = h
+            out = layer(h)
+            h = out + residual
+        if len(self.layers) > 1:
+            h = self.layers[-1](h) # Final proj
+        return h
+
+    def sequential(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
 class ESM(nn.Module):
     def __init__(
         self,
@@ -148,15 +245,66 @@ class ESM(nn.Module):
         if not padding_mask.any():
             padding_mask = None
 
+        all_activations = []
         for layer_idx, layer in enumerate(self.layers):
             x = layer(
                 x,
                 self_attn_padding_mask=padding_mask,
-            )
+            ) # Shape(T, B, E)
+            all_activations.append(x.transpose(0, 1)) # (T, B, E) => (B, T, E)
 
         x = self.emb_layer_norm_after(x)
         x = x.transpose(0, 1)  # (T, B, E) => (B, T, E)
-        return x
+        all_activations[-1] = x
+
+        return torch.stack(all_activations, dim=0)
+
+class Activation(nn.Module):
+    def __init__(self, proj_dim: int, n_layers: int, agglomeration_type: Literal['mult', 'abs_diff', 'cat'] = 'mult'):
+        """
+        Module used to compute the identity between two sequence from their vector representations.
+        """
+        super().__init__()
+        self.agglomeration = agglomeration_type
+
+        if n_layers < 1:
+            raise ValueError('n_layers must be >= 1')
+
+        if agglomeration_type == 'cat':
+            proj_dim *= 2
+
+        if n_layers == 1:
+            self.layers = nn.Sequential(
+                nn.Linear(proj_dim, 2 * proj_dim),
+                nn.GELU(),
+                nn.Linear(2 * proj_dim, 1),
+            )
+        else:
+            self.layers = nn.Sequential(
+                nn.Linear(proj_dim, 2 * proj_dim),
+                nn.GELU(),
+                *[layer for _ in range(n_layers - 1) for layer in (nn.Linear(2 * proj_dim, 2 * proj_dim), nn.GELU())],
+                nn.Linear(2 * proj_dim, 1),
+            )
+
+    def forward(self, emb1: torch.Tensor, emb2: torch.Tensor):
+        """
+        Compute the pseudo-identity between two embeddings.
+        :param emb1: The first embedding tensor of shape (B, E)
+        :param emb2: The second embedding tensor of shape (B, E)
+        :return: (B, 1) tensor with the pseudo-identity (between 0 and 1)
+        """
+        if self.agglomeration == 'mult':
+            dist = emb1 * emb2 # Shape (B, 2E)
+        elif self.agglomeration == 'abs_diff':
+            dist = (emb1 - emb2).abs()
+        elif self.agglomeration == 'cat':
+            dist = torch.cat((emb1, emb2), dim=-1)
+        else:
+            raise NotImplementedError(f"Unknown agglomeration type: {self.agglomeration}")
+        out = self.layers(dist) # dist @ self.weight + self.bias  # Shape (B, 1)
+        return out # To get the pseudo-identity, we need to apply a sigmoid activation
+
 
 class ESMEncoder(nn.Module):
     def __init__(
@@ -172,7 +320,17 @@ class ESMEncoder(nn.Module):
         head_dim: int = 1280,
         head_depth: int = 0, # 0 = Linear projection
         proj_dim: int = 8,
-        use_clf_token: bool = False
+        use_clf_token: bool = False,
+        activation_dim: int = 0, # 0 = No activation, otherwise the activation width
+        activation_nlayers: int = 1,
+        activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult',
+        norm_embedding: bool = True,
+        norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
+        prenorm: bool = False,
+        linbranch: bool = False,
+        head_residual: bool = False,
+        learned_pooling: bool = False,
+        all_layers: bool = False
     ):
         super().__init__()
         self.backbone = ESM(
@@ -182,11 +340,13 @@ class ESMEncoder(nn.Module):
             attention_heads=attention_heads,
             token_dropout=token_dropout,
             attention_dropout=attention_dropout,
-            layer_dropout=layer_dropout
+            layer_dropout=layer_dropout,
 
         )
-        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim,
-                                      head_dropout, use_clf_token=use_clf_token)
+        self.head = FC_projector(head_depth, embed_dim, head_dim, proj_dim, 102, num_layers,
+                                      head_dropout, use_clf_token=use_clf_token, norm=norm,
+                                 prenorm=prenorm, linbranch=linbranch, residual=head_residual,
+                                 learned_pooling=learned_pooling, all_layers=all_layers)
         self.init_params = dict(
             num_layers=num_layers,
             embed_dim=embed_dim,
@@ -198,15 +358,29 @@ class ESMEncoder(nn.Module):
             head_dim=head_dim,
             head_depth=head_depth,
             proj_dim=proj_dim,
-            use_clf_token=use_clf_token
+            activation_dim=activation_dim,
+            activation_nlayers=activation_nlayers,
+            activation_agglomeration=activation_agglomeration,
+            norm_embedding=norm_embedding,
+            norm=norm,
+            prenorm=prenorm,
+            linbranch=linbranch,
+            head_residual=head_residual,
         )
+        if activation_dim:
+            self.activation = Activation(activation_dim, activation_nlayers, activation_agglomeration)
+
+        self.norm_emb = norm_embedding
+
     def forward(self, tokens):
+        padding_mask = tokens.eq(self.backbone.padding_idx)
         z = self.backbone(tokens)  # Shape (B, T, E)
 
-        emb = self.head(z)
+        emb = self.head(z, padding_mask=padding_mask)
 
         # Normalize the embeddings
-        emb = torch.nn.functional.normalize(emb, p=2, dim=1)
+        if self.norm_emb:
+            emb = torch.nn.functional.normalize(emb, p=2, dim=1)
         return emb
 
     @classmethod

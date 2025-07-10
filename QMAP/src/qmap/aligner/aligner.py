@@ -39,7 +39,7 @@ def align_db(db1: VectorizedDB, db2: VectorizedDB, batch: int = 0, device: str =
     :return: Identity score matrix of shape (len(db1), len(db2))
     """
     device = _get_device() if device == "auto" else device
-    encoder = Encoder()
+    encoder = Encoder(force_cpu=device == "cpu")
     activation = encoder.activation
     activation.half()
     with torch.inference_mode():

@@ -10,6 +10,7 @@ from typing import List, Tuple, Sequence, Literal
 from pyutils import progress
 from .vectorizedDB import VectorizedDB
 from .utils import _get_device
+from ema_pytorch import EMA
 
 root = Path(__file__).parent.parent
 
@@ -23,9 +24,19 @@ class EsmEncoderConfig:
     layer_dropout: float = 0.
     head_dropout: float = 0.
     head_dim: int = 512
-    head_depth: int = 0
+    head_depth: int = 2
     proj_dim: int = 512
-    use_clf_token: bool = True
+    use_clf_token: bool = False
+    activation_dim: int = 0  # 0 = No activation, otherwise the activation width
+    activation_nlayers: int = 1
+    activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult'
+    norm_embedding: bool = True
+    norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'none'
+    prenorm: bool = False
+    linbranch: bool = True
+    head_residual: bool = True,
+    learned_pooling: bool = False
+    all_layers: bool = True
 
 
 class AlignmentCollator:
@@ -95,12 +106,12 @@ class SeqDataset(Dataset):
 
 class Encoder:
     def __init__(self, config: EsmEncoderConfig = EsmEncoderConfig(),
-                 path: str = f"{root}/aligner/model/weights/ESM_35M.pth",
+                 path: str = f"{root}/aligner/model/weights/54.pth",
                  force_cpu: bool = False):
         self.device = _get_device(force_cpu=force_cpu)
 
         self.alphabet = ESMAlphabet()
-        self.model = ESMEncoder(
+        model = ESMEncoder(
             alphabet=self.alphabet,
             num_layers=config.num_layers,
             embed_dim=config.embed_dim,
@@ -112,10 +123,23 @@ class Encoder:
             head_dim=config.head_dim,
             head_depth=config.head_depth,
             proj_dim=config.proj_dim,
-            use_clf_token=config.use_clf_token
+            use_clf_token=config.use_clf_token,
+            activation_dim=config.activation_dim,
+            activation_nlayers=config.activation_nlayers,
+            activation_agglomeration=config.activation_agglomeration,
+            norm_embedding=config.norm_embedding,
+            norm=config.norm,
+            prenorm=config.prenorm,
+            linbranch=config.linbranch,
+            head_residual=config.head_residual,
+            learned_pooling=config.learned_pooling,
+            all_layers=config.all_layers
         )
+        ema_model = EMA(model, beta=0.9999, update_after_step = 500, update_every = 10)
+
         data = torch.load(path, map_location=torch.device('cpu'))
-        self.model.load_state_dict(data["model_state_dict"])
+        ema_model.load_state_dict(data['ema_state_dict'])
+        self.model = ema_model.ema_model
         self.model.to(self.device)
         self.model.eval()
         self.activation = PReLU()
@@ -123,14 +147,14 @@ class Encoder:
         self.activation.to(self.device)
         self.activation.eval()
 
-    def encode(self, sequences: list[str]) -> VectorizedDB:
+    def encode(self, sequences: list[str], batch_size: int = 512) -> VectorizedDB:
         """
         Encode a list of sequences using the ESM model.
         :param sequences: List of protein sequences to encode.
         :return: Encoded tensor of shape (batch_size, sequence_length, embed_dim).
         """
         # Make dataloader
-        dataloader = self._make_dataloader(sequences, self.alphabet, batch_size=64)
+        dataloader = self._make_dataloader(sequences, self.alphabet, batch_size=batch_size)
 
         all_embeddings = []
         all_sequences = []
