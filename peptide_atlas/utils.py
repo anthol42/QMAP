@@ -1,5 +1,6 @@
 from Bio.Align import PairwiseAligner
 from Bio.Align import substitution_matrices
+import numpy as np
 
 def create_blosum_with_xo(matrix_name="BLOSUM62", x_penalty=-1, x_self_score=0, o_penalty=-2, o_self_score=2):
     """
@@ -99,3 +100,89 @@ def read_fasta(file_path):
             sequence = line.strip()
             sequences[id_] = sequence
     return sequences
+
+def sequence_entropy(sequence: str) -> float:
+    """
+    Calculate the Shannon entropy of a sequence.
+    :param sequence: The sequence to calculate the entropy for
+    :return: The Shannon entropy of the sequence
+    """
+    from collections import Counter
+    from math import log2
+
+    counts = Counter(sequence)
+    total = len(sequence)
+    probabilities = [count / total for count in counts.values()]
+    return -sum(p * log2(p) for p in probabilities if p > 0)
+
+def _low_complexity_sequence(max_motif_length: int = 4, max_length: int = 100,
+                                      mutation_rate: float = 0.05):
+    """
+    Generate low complexity sequences.
+    :return: A generator yielding low complexity sequences.
+    """
+    amino_acids = "ACDEFGHIKLMNPQRSTVWYX"
+    # Step 1: Choose the motif length
+    while True:
+        motif_length = np.random.randint(1, max_motif_length)
+        if motif_length == 1 and np.random.rand() < 0.95:  # 5% chance to have a motif length of 1
+            continue
+        break
+    motif = ''.join(np.random.choice(list(amino_acids), size=motif_length))
+
+    # Step 2: Choose the number of repetitions
+    max_motif = max_length // motif_length
+    # The repetition follows a geometric distribution
+
+    repetitions = np.random.geometric(0.25) + 1  # +1 to ensure at least two repetition
+    repetitions = min(repetitions, max_motif)
+
+    # Step 3: Generate the sequence
+    sequence = motif * repetitions
+
+    # Step 4: Apply random mutations
+    sequence = list(sequence)
+    for i in range(len(sequence)):
+        if np.random.rand() < mutation_rate:
+            sequence[i] = np.random.choice(list(amino_acids))
+    sequence = ''.join(sequence)
+    return sequence
+
+def low_complexity_sequence_generator(num_subsequences: int = 1, max_motif_length: int = 4, max_length: int = 100,
+                                        mutation_rate: float = 0.025, remove_anomalies: bool = True):
+    """
+    Generate low complexity sequences.
+    :param num_subsequences: The number of subsequences to generate within the sequence. Samples randomly between 1 and num_subsequences.
+    :param max_motif_length: The max length of the motif to repeat. Samples randomly between 1 and max_motif_length. However, a motif length of 1 is unlikely (1% of 1/max_motif_length)
+    :param max_length: The maximum length of the sequence.
+    :param mutation_rate: The probability to induce a mutation in each amino acid of the sequence.
+    :param remove_anomalies: Remove sequences that have a complexity of 1 or 1.584962500721156
+    :return: yield the sequences
+    """
+    while True:
+        num_subsequence = np.random.randint(1, num_subsequences + 1) if num_subsequences > 1 else 1
+        # print(num_subsequence)
+        seq = ""
+        for _ in range(num_subsequence):
+            part = _low_complexity_sequence(max_motif_length, max_length // num_subsequences, mutation_rate)
+            if remove_anomalies:
+                while (sequence_entropy(part) == 1 or abs(sequence_entropy(part) -  1.584962500721156) < 1e-6  or
+                       abs(sequence_entropy(part) - 0.9182958340544896) < 1e-6):
+                    part = _low_complexity_sequence(max_motif_length, max_length // num_subsequences, mutation_rate)
+            seq += part
+
+        yield seq
+
+def high_complexity_sequence_generator(max_length: int = 100):
+    """
+    Generate high complexity sequences.
+    :param max_length: The maximum length of the sequence.
+    :return: yield the sequences
+    """
+    amino_acids = "ACDEFGHIKLMNPQRSTVWYX"
+    while True:
+        length = np.random.binomial(max_length, 0.25)
+        if length > max_length:
+            length = max_length
+        seq = ''.join(np.random.choice(list(amino_acids), size=length))
+        yield seq
