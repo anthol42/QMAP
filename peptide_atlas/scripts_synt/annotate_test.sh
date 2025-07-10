@@ -7,7 +7,6 @@
 #SBATCH --mem=1G
 #SBATCH --cpus-per-task=1
 
-cd ..
 
 pwd
 

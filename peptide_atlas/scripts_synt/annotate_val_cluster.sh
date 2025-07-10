@@ -7,8 +7,6 @@
 #SBATCH --mem=1G
 #SBATCH --cpus-per-task=1
 
-cd ..
-
 pwd
 
 # Create logs directory if it doesn't exist
