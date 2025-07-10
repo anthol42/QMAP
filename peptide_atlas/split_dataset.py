@@ -5,9 +5,7 @@ from pathlib import PurePath
 from utils import read_fasta
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--suffix", default='', type=str)
-SUFFIX = parser.parse_args().suffix
+
 def parse_cdhit_clstr(clstr_path: str) -> pd.DataFrame:
     """
     Parses a CD-HIT .clstr file and returns a DataFrame with cluster and sequence IDs.
@@ -67,6 +65,9 @@ def split_clusters(clusters, test_ratio: float = 0.2, val_ratio = 0.1) -> tuple:
     return train_ids, val_ids, test_ids
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--suffix", default='', type=str)
+    SUFFIX = parser.parse_args().suffix
     clusters = parse_cdhit_clstr(f".cache/clusters{SUFFIX}.clstr")
     train_ids, val_ids, test_ids = split_clusters(clusters)
 
