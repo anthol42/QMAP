@@ -10,7 +10,11 @@
   - [X] Embedding diversity: Add a loss term to encourage the embeddings to spread in the full space (Example: cosine-based between embeddings in batch or variance feature wise - maximize var)
   - [X] Orthogonality regularization: Add a loss term that encourages the model to produce uncorrelated features based on the covariance matrix
   - [X] Space smoothness: Add a loss term to ensure that the space is smooth - meaning that two similar sequence must have similar embeddings: Ensure that the l2 distance between embeddings is proportional to the identity between the sequences
-- [ ] Different encoders (ProtT5, ProtBERT, etc)
+- [ ] Different encoders
+  - [ ] ESM2 8M, 35M, 150M, 650M, 3B
+  - [ ] Ankh (Base (1.5B, Large 3B)
+  - [ ] ProstT5 (5B)
+  - [ ] Prot_t5_xl_uniref50 (3B)
 - [ ] Two stage training (Pre training, then fine-tuning)
   - [ ] MLM
   - [ ] Contrastive
