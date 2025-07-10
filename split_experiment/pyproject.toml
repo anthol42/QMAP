@@ -13,5 +13,9 @@ dependencies = [
     "notebook>=7.4.3",
     "numpy>=2.3.0",
     "pandas>=2.3.0",
+    "qmap",
     "tqdm>=4.67.1",
 ]
+
+[tool.uv.sources]
+qmap = { path = "../QMAP", editable = true }
