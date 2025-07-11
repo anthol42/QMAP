@@ -3,8 +3,8 @@
 #SBATCH --array=0-99
 #SBATCH --output=logs/compute_identity_%A_%a.out
 #SBATCH --error=logs/compute_identity_%A_%a.err
-#SBATCH --time=04:00:00
-#SBATCH --mem=1G
+#SBATCH --time=06:00:00
+#SBATCH --mem=2G
 #SBATCH --cpus-per-task=1
 
 pwd
