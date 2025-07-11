@@ -4,7 +4,7 @@ data:
   path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
   dataset: "synt"
 training:
-  num_epochs: 1
+  num_epochs: 10
   lr: 5.e-4
   min_lr: 0.
   weight_decay:  0.
