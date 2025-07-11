@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dir', type=str, required=True, help='Directory with alignments parts. (Numpy matrices .npy')
 parser.add_argument('--output', type=str, required=True, help='Output file (.npy)')
 parser.add_argument("--min_samples", type=int, default=500_000, help="Minimum number of samples to subsample from each bin. Default: 500000")
+parser.add_argument("--max_idx", type=int, default=None, help="Max index to merge. Default: None")
 
 def get_idx(file_path: str) -> int:
     name = PurePath(file_path).name
@@ -43,6 +44,10 @@ if __name__ == '__main__':
 
     # Sort files by index extracted from the filename
     files.sort(key=get_idx)
+
+    # Filter files if max_idx is set
+    if args.max_idx:
+        files = [path for path in files if get_idx(path) <= args.max_idx]
 
     # Load and concatenate all alignments
     alignments = []

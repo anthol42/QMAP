@@ -94,4 +94,5 @@ both types of sampling to get an identity distribution close to uniform.
 uv run merge_alignments.py --dir=.cache/val_parts_synt --output=build/val_synt.npy --min_samples=10000
 uv run merge_alignments.py --dir=.cache/test_parts_synt --output=build/test_synt.npy --min_samples=30000
 uv run merge_alignments.py --dir=.cache/train_parts_synt --output=build/train_synt.npy --min_samples=500000
+uv run merge_alignments.py --dir=.cache/test_parts_synt --output=build/test_synt_random.npy --min_samples=30000 --max_idx=29
 ```
