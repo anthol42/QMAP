@@ -45,9 +45,9 @@ def split_clusters(clusters, test_ratio: float = 0.2, val_ratio = 0.1) -> tuple:
     """
     cluster_ids = clusters['cluster_id'].unique()
     print(f"Found {len(cluster_ids)} clusters in the dataset.")
-    # Clusters are ordered by size, so we can just take the last n_test clusters in order to maximize the diversity
-    # Compute the cumsum of the cluster sizes
-    cluster_sizes = clusters['cluster_id'].value_counts().sort_index()
+    cluster_sizes = clusters['cluster_id'].value_counts()
+    # Shuffle the clusters to ensure randomness and equal distribution of different sequences types
+    cluster_sizes = cluster_sizes.sample(frac=1, random_state=42)
     cum_sum = cluster_sizes.cumsum()
     n_train = int(len(clusters) * (1 - test_ratio - val_ratio))
     train_mask = cum_sum <= n_train
