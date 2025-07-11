@@ -64,6 +64,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
 
     # Add hyperparameters
     resultSocket.add_hparams(
+        dataset = config["data"]["dataset"],
         lr=config["training"]["lr"],
         min_lr=config["training"]["min_lr"],
         wd=config["training"]["weight_decay"],

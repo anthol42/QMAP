@@ -1,7 +1,8 @@
 data:
-  batch_size: [256, 512]
+  batch_size: [128, 512]
   num_workers: [2, 2] # local, hpc
   path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
+  dataset: "synt"
 training:
   num_epochs: 10
   lr: 5.e-4

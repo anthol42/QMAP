@@ -5,6 +5,7 @@ config_format = ConfigFormat({
         "shuffle": Default(bool, True),
         "path": Profile(str),
         "num_workers": Profile(int),
+        "dataset": Default(str, None)
     },
     "training":{
         "num_epochs": int,
