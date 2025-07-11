@@ -47,9 +47,11 @@ within each batch. I noticed that all of these regularization techniques improve
 the tuning of the weight of each is really important and dependent on the technique. This means that we can't use the 
 same weight for all. It would be interesting to do a hyperparameter search to learn these weights. After combining all 
 of these regularization techniques, I notices that it was better to use three of the four regularization techniques: 
-diversity, orthogonality and smoothness. The variance regularization did not combined well with the others and 
-did not produce better results (Note that using the var regularization increase the performances in test (best perf), 
-but not in val, so I consider this luck and not the best run. [RunID 79]). 
+diversity, orthogonality and smoothness. The variance regularization did not seem to combined well with the others and 
+did not produce better results Note that using the var regularization increase the performances in test (best perf), 
+but not in val. [RunID 79]. I noticed that this dynamic applied also to the var regularization alone: the MAE in val 
+is a little bit higher than other regularization techniques, but better in test. I don't know if I should use it or 
+not.
 
 After all these tests, I noticed that the performances on the DBAASP dataset are way worse than on the test set, which 
 is odd because the test set is supposed to represent the real world performances. I double check the code and did not 
