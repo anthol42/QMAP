@@ -10,10 +10,10 @@ training:
   loss: "MSE"
   optimizer: "AdamW"
   ema_beta: 0.9999
-  smoothness: 0.
-  diversity: 0.
+  smoothness: 0.01
+  diversity: 0.001
   var: 0.
-  orthogonality: 0.
+  orthogonality: 0.05
 model:
   model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
   weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]

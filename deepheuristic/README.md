@@ -45,9 +45,11 @@ terms of angular distances and l2 distances (Correlation between the two). I als
 is similar to the diversity regularization, but it encourages the variance of each feature to be as high as possible 
 within each batch. I noticed that all of these regularization techniques improve the generalization performances, but 
 the tuning of the weight of each is really important and dependent on the technique. This means that we can't use the 
-same weight for all. It would be interesting to do a hyperparameter search to learn these weights.
-
-- > TODO: Note the combination of these techniques
+same weight for all. It would be interesting to do a hyperparameter search to learn these weights. After combining all 
+of these regularization techniques, I notices that it was better to use three of the four regularization techniques: 
+diversity, orthogonality and smoothness. The variance regularization did not combined well with the others and 
+did not produce better results (Note that using the var regularization increase the performances in test (best perf), 
+but not in val, so I consider this luck and not the best run. [RunID 79]). 
 
 After all these tests, I noticed that the performances on the DBAASP dataset are way worse than on the test set, which 
 is odd because the test set is supposed to represent the real world performances. I double check the code and did not 
