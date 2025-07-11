@@ -6,11 +6,12 @@ import utils
 import numpy as np
 
 class AlignmentDataset(Dataset):
-    def __init__(self, config: ConfigFile, split: Literal["train", "val", "test"], fract: float = 1.):
+    def __init__(self, config: ConfigFile, split: Literal["train", "val", "test"], fract: float = 1., random: bool = False):
         self.config = config
         self.sequences = self._load_sequences(config["data"]["path"], split, dataset=config["data"]["dataset"] or None)
         self.seq_pair, self.label = self._load_annotations(config["data"]["path"], split, fract,
-                                                           dataset=config["data"]["dataset"] or None) # Alignment identities
+                                                           dataset=config["data"]["dataset"] or None,
+                                                           random=random) # Alignment identities
         self.split = split
         self.max_length = 100
 
@@ -48,7 +49,7 @@ class AlignmentDataset(Dataset):
         return utils.read_fasta(fasta_path)
 
     def _load_annotations(self, path: str, split: Literal["train", "val", "test"], fract: float,
-                          dataset: Literal[None, "synt"]):
+                          dataset: Literal[None, "synt"], random: bool = False):
         """
         Load the annotation for a given split. It returns the sequences pairs as an int array and the annotations as a
         float array
@@ -56,10 +57,14 @@ class AlignmentDataset(Dataset):
         :param split: The split to load (train, val, test)
         :param fract: The fraction of the sequences to load
         :param dataset: The dataset to load from the path
+        :param random: If true, select a variant dataset where the samples aligned are sampled randomly
         :return: The sequence pair ids and the labels (identities)
         """
         if dataset is not None:
-            npy_path = f"{path}/{split}_{dataset}.npy"
+            if random:
+                npy_path = f"{path}/{split}_{dataset}_random.npy"
+            else:
+                npy_path = f"{path}/{split}_{dataset}.npy"
         else:
             npy_path = f"{path}/{split}.npy"
         data = np.load(npy_path)

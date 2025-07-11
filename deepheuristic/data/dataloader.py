@@ -3,6 +3,18 @@ from utils.esm_alphabet import ESMAlphabet
 from .alignment_collator import AlignmentCollator
 from torch.utils.data import DataLoader
 
+def make_rnd_test_loader(config, alphabet: ESMAlphabet):
+    test_ds = AlignmentDataset(config, split="test", random=True)
+    # Max length is set to 100 even though we have few sequences that long
+    collator = AlignmentCollator(alphabet=alphabet)
+
+    return DataLoader(test_ds,
+                         collate_fn=collator,
+                         num_workers=config["data"]["num_workers"],
+                         persistent_workers=config["data"]["num_workers"] > 0,
+                         batch_size=config["data"]["batch_size"],
+                         shuffle=False)
+
 def make_dataloader(config, alphabet: ESMAlphabet, fract: float):
     train_ds = AlignmentDataset(config, split="train", fract=fract)
     val_ds = AlignmentDataset(config, split="val", fract=fract)

@@ -1,6 +1,6 @@
 import torch
 import os
-from data.dataloader import make_dataloader
+from data.dataloader import make_dataloader, make_rnd_test_loader
 from models import ESMEncoder
 from optimizers.optimizer import make_optimizer
 from training.train import train, evaluate
@@ -212,6 +212,10 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     else:
         results, all_preds = evaluate(ema_model or model,
                                       test_loader, loss, device, metrics=metrics)
+        if config["data"]["dataset"] == "synt":
+            test_rnd_align_loader = make_rnd_test_loader(config, alphabet)
+            results_rnd, all_preds_rnd = evaluate(ema_model or model,
+                                          test_rnd_align_loader, loss, device, metrics=metrics)
         log("Training done!  Saving...")
 
         # Prediction range
@@ -262,7 +266,10 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         warn(config.get_warnings())
 
     # Save results
-    resultSocket.write_result(**{name: result.item() for name, result in results.items()})
+    if config["data"]["dataset"] == "synt":
+        resultSocket.write_result(**{name: result.item() for name, result in results.items()}, rnd_mae=results_rnd["mae"].item())
+    else:
+        resultSocket.write_result(**{name: result.item() for name, result in results.items()})
 
     return results[args.watch]
 
