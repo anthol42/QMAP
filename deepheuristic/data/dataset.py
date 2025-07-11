@@ -8,9 +8,9 @@ import numpy as np
 class AlignmentDataset(Dataset):
     def __init__(self, config: ConfigFile, split: Literal["train", "val", "test"], fract: float = 1.):
         self.config = config
-        self.sequences = self._load_sequences(config["data"]["path"], split, dataset=config["data"]["dataset"])
+        self.sequences = self._load_sequences(config["data"]["path"], split, dataset=config["data"]["dataset"] or None)
         self.seq_pair, self.label = self._load_annotations(config["data"]["path"], split, fract,
-                                                           dataset=config["data"]["dataset"]) # Alignment identities
+                                                           dataset=config["data"]["dataset"] or None) # Alignment identities
         self.split = split
         self.max_length = 100
 

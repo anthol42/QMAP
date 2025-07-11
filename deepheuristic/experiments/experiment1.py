@@ -89,7 +89,8 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         smoothness=config["training"]["smoothness"],
         diversity=config["training"]["diversity"],
         var=config["training"]["var"],
-        orthogonality=config["training"]["orthogonality"]
+        orthogonality=config["training"]["orthogonality"],
+        gradient_accumulation=config["training"]["gradient_accumulation"],
     )
     run_id = resultSocket.run_id if not OPTUNA else f"OPTUNA_{trial.number}"
 
@@ -193,7 +194,8 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
         metrics=metrics,
         watch=args.watch,
         sample_inputs=sample_inputs,
-        verbose=args.verbose
+        verbose=args.verbose,
+        gradient_accumulation=config["training"]["gradient_accumulation"] or None
     )
     log("Training done!")
 

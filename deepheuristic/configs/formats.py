@@ -5,7 +5,7 @@ config_format = ConfigFormat({
         "shuffle": Default(bool, True),
         "path": Profile(str),
         "num_workers": Profile(int),
-        "dataset": Default(str, None)
+        "dataset": Default(str, "")
     },
     "training":{
         "num_epochs": int,
@@ -19,6 +19,7 @@ config_format = ConfigFormat({
         "diversity": Default(float, 0.),
         "var": Default(float, 0.),
         "orthogonality": Default(float, 0.),
+        "gradient_accumulation": Default(int, 0),
     },
     "model":Options(
         Option("ESM")({

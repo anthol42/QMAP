@@ -7,7 +7,10 @@ from typing import *
 from utils.bin import *
 
 def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, device, scheduler=None, scaler=None,
-                    metrics: dict = None, sample_inputs: Optional[str] = None):
+                    metrics: dict = None, sample_inputs: Optional[str] = None, gradient_accumulation: Optional[int] = None):
+    if gradient_accumulation is None:
+        gradient_accumulation = 1
+
     if metrics is None:
         metrics = {}
     model.train()
@@ -32,15 +35,20 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
                 pred2 = model(seq2)
                 loss, pred = criterion(pred1, pred2, label) # MSE loss between predicted and true labels=
             scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            if i % gradient_accumulation == 0: # Gradient accumulation
+                scaler.step(optimizer)
+                scaler.update()
         else:
             pred1 = model(seq1)
             pred2 = model(seq2)
             loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
             loss.backward()
-            optimizer.step()
-        ema_model and ema_model.update()
+            if i % gradient_accumulation == 0: # Gradient accumulation
+                optimizer.step()
+        if i % gradient_accumulation == 0: #Follow gradient accumulation
+            ema_model and ema_model.update()
+
+
         State.global_step += 1
 
         if scheduler:
@@ -71,6 +79,17 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
             loss=lossCounter.compute().item(),
             **{k: v.compute().item() for k, v in metrics.items()}
         )
+
+    if i % gradient_accumulation != 0:
+        # Do last step
+        if scaler:
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            optimizer.step()
+
+        ema_model and ema_model.update()
+
     print()
     # Report epochs metrics
     for metric_name, counter in metrics.items():
@@ -122,7 +141,7 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
 def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, scheduler=None,
           metrics: dict = None, noscaler: bool = False, watch: str = "accuracy", sample_inputs: Optional[str] = None,
           optuna_trial: Optional[optuna.Trial] = None,
-          verbose: int = 3):
+          verbose: int = 3, gradient_accumulation: Optional[int] = None):
     log("Training in optuna mode") if optuna_trial is not None else None
     State.global_step = 0
     # Checkpoints
@@ -143,7 +162,8 @@ def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_
 
         # Train the epoch and validate
         train_one_epoch(
-            train_loader, model, ema_model, optimizer, criterion, epoch, device, scheduler, scaler, metrics, sample_inputs=sample_inputs
+            train_loader, model, ema_model, optimizer, criterion, epoch, device, scheduler, scaler, metrics,
+            sample_inputs=sample_inputs, gradient_accumulation=gradient_accumulation
         )
         validation_step(
             ema_model if ema_model is not None else model,
