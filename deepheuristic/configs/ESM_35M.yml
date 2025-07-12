@@ -15,7 +15,7 @@ training:
   diversity: 0.001
   var: 0.
   orthogonality: 0.05
-  gradient_accumulation: 2
+  gradient_accumulation: 0
 model:
   model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
   weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
