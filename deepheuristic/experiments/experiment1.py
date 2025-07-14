@@ -209,6 +209,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
     if OPTUNA:
         results, all_preds = evaluate(ema_model or model,
                                       val_loader, loss, device, metrics=metrics)
+        results_rnd = {"mae": torch.tensor(float('nan'))}
     else:
         results, all_preds = evaluate(ema_model or model,
                                       test_loader, loss, device, metrics=metrics)
