@@ -287,7 +287,10 @@ def experiment1_hsearch(args, kwargs):
 
         # Training
         config["training"]["lr"] = trial.suggest_float('training.lr', 1e-6, 1e-3, log=True)
-        config["training"]["weight_decay"] = trial.suggest_float('training.weight_decay', 1e-12, 1., log=True)
+        config["training"]["smoothness"] = trial.suggest_float('training.smoothness', 1e-5, 0.1, log=True)
+        config["training"]["diversity"] = trial.suggest_float('training.diversity', 1e-8, 0.001, log=True)
+        config["training"]["var"] = trial.suggest_float('training.var', 1e-8, 0.1, log=True)
+        config["training"]["orthogonality"] = trial.suggest_float('training.orthogonality', 1e-4, 0.1, log=True)
 
         return experiment1(args, kwargs, config, trial)
 
