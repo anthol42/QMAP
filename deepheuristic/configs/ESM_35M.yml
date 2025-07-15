@@ -25,7 +25,7 @@ model:
   num_layers: 12
   head_dropout: 0.
   head_dim: 0
-  proj_dim: 512
+  proj_dim: 1024
   head_depth: 2
   use_clf_token: False
   head_norm: none
