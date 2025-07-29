@@ -4,17 +4,7 @@ from typing import Iterable, Optional, Literal
 from pyutils import ConfigFile
 from .esm_alphabet import ESMAlphabet
 from .modules import ESM1bLayerNorm, TransformerLayer
-import torch.nn.functional as F
 
-class DropScaler(nn.Module):
-    def __init__(self, ratio: float = 0.5):
-        super().__init__()
-        self.mult = 1 - ratio
-    def forward(self, X):
-        if self.training:
-            return X * (self.mult ** -1)
-        else:
-            return X
 class FC_layer(nn.Module):
     def __init__(self, in_dim: int, out_dim: int, dropout: float,
                  norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
@@ -321,9 +311,6 @@ class ESMEncoder(nn.Module):
         head_depth: int = 0, # 0 = Linear projection
         proj_dim: int = 8,
         use_clf_token: bool = False,
-        activation_dim: int = 0, # 0 = No activation, otherwise the activation width
-        activation_nlayers: int = 1,
-        activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult',
         norm_embedding: bool = True,
         norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'ESM',
         prenorm: bool = False,
@@ -358,17 +345,13 @@ class ESMEncoder(nn.Module):
             head_dim=head_dim,
             head_depth=head_depth,
             proj_dim=proj_dim,
-            activation_dim=activation_dim,
-            activation_nlayers=activation_nlayers,
-            activation_agglomeration=activation_agglomeration,
             norm_embedding=norm_embedding,
             norm=norm,
             prenorm=prenorm,
             linbranch=linbranch,
             head_residual=head_residual,
         )
-        if activation_dim:
-            self.activation = Activation(activation_dim, activation_nlayers, activation_agglomeration)
+        self.activation = nn.PReLU()
 
         self.norm_emb = norm_embedding
 
@@ -400,71 +383,3 @@ class ESMEncoder(nn.Module):
         }
 
         torch.save(data, to)
-
-class TransformerFreezer:
-    def __init__(self, modules: Iterable[TransformerLayer]):
-        self.modules = modules
-
-    def _get_num_layers(self, ratio: float):
-        return int(len(self.modules) * ratio)
-    def freeze_attention_norm(self, ratio: float = 1.):
-        layers_to_freeze = self._get_num_layers(ratio)
-        for i in range(layers_to_freeze):
-            self.modules[i].self_attn_layer_norm.requires_grad_(False)
-
-    def freeze_final_norm(self, ratio: float = 1.):
-        layers_to_freeze = self._get_num_layers(ratio)
-        for i in range(layers_to_freeze):
-            self.modules[i].final_layer_norm.requires_grad_(False)
-
-    def freeze_ffn(self, ratio: float = 1.):
-        layers_to_freeze = self._get_num_layers(ratio)
-        for i in range(layers_to_freeze):
-            self.modules[i].fc1.requires_grad_(False)
-            self.modules[i].fc2.requires_grad_(False)
-
-    def freeze_attention(self, ratio: float = 1.):
-        layers_to_freeze = self._get_num_layers(ratio)
-        for i in range(layers_to_freeze):
-            self.modules[i].self_attn.requires_grad_(False)
-
-class ESMFreezer:
-    """
-    Class that freezes specific layers of the ESM model
-    """
-
-    def __init__(self, model: ESMEncoder):
-        self.model = model
-
-    def _get_num_layers(self, ratio: float):
-        return int(len(self.model.layers) * ratio)
-
-    def freeze_embeddings(self):
-        self.model.embed_tokens.requires_grad_(False)
-
-    def freeze_transformer(self, ratio: float = 1.):
-        layers_to_freeze = self._get_num_layers(ratio)
-        for i in range(layers_to_freeze):
-            self.model.layers[i].requires_grad_(False)
-
-    def freeze_layernorm_after(self):
-        self.model.emb_layer_norm_after.requires_grad_(False)
-
-    @property
-    def Transformer(self):
-        return TransformerFreezer(self.model.layers)
-
-def freeze_layers(model: ESMEncoder, config: ConfigFile):
-    freezer = ESMFreezer(model)
-
-    freezer.freeze_embeddings() if config["freezer"]["freeze_embeddings"] else None
-    # if config["training"]["lora_rank"] > 0:
-    #      freezer.freeze_transformer()
-    if config["freezer"]["freeze_transformer"] > 0:
-        freezer.freeze_transformer(config["freezer"]["freeze_transformer"])
-    freezer.freeze_layernorm_after() if config["freezer"]["freeze_layernorm_after"] else None
-
-    freezer.Transformer.freeze_attention_norm(config["freezer"]["freeze_attention_norm"]) if config["freezer"]["freeze_attention_norm"] else None
-    freezer.Transformer.freeze_final_norm(config["freezer"]["freeze_final_norm"]) if config["freezer"]["freeze_final_norm"] else None
-    freezer.Transformer.freeze_ffn(config["freezer"]["freeze_ffn"]) if config["freezer"]["freeze_ffn"] else None
-    freezer.Transformer.freeze_attention(config["freezer"]["freeze_attention"]) if config["freezer"]["freeze_attention"] else None

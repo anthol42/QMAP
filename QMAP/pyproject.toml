@@ -6,8 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "antho-utils>=0.1.0",
-    "ema-pytorch>=0.7.7",
+    "huggingface-hub>=0.34.3",
     "numpy>=2.3.1",
+    "safetensors>=0.5.3",
     "torch>=2.7.1",
 ]
 keywords = ["qmap", "protein", "clustering", "sequence", "database", "machine learning", "deep learning"]
@@ -24,6 +25,10 @@ path = "src/qmap/__version__.py"
 [tool.hatch.build.targets.sdist]
 include = [
   "src/qmap",
+  "src/qmap/aligner/model/weights/85.pth",
   "pyproject.toml",
   "README.md"
 ]
+
+[dependency-groups]
+dev = []

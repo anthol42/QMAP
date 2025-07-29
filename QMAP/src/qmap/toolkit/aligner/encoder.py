@@ -1,3 +1,5 @@
+import time
+
 from .model import ESMEncoder
 from .model import ESMAlphabet
 import torch
@@ -6,11 +8,11 @@ from torch.nn import PReLU
 from dataclasses import dataclass
 import os
 from pathlib import Path
-from typing import List, Tuple, Sequence, Literal
+from typing import List, Tuple, Sequence, Literal, Optional
 from pyutils import progress
 from .vectorizedDB import VectorizedDB
 from .utils import _get_device
-from ema_pytorch import EMA
+from huggingface_hub import PyTorchModelHubMixin
 
 root = Path(__file__).parent.parent
 
@@ -27,9 +29,6 @@ class EsmEncoderConfig:
     head_depth: int = 2
     proj_dim: int = 512
     use_clf_token: bool = False
-    activation_dim: int = 0  # 0 = No activation, otherwise the activation width
-    activation_nlayers: int = 1
-    activation_agglomeration: Literal['mult', 'abs_diff', 'cat'] = 'mult'
     norm_embedding: bool = True
     norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'none'
     prenorm: bool = False
@@ -104,53 +103,47 @@ class SeqDataset(Dataset):
     def __getitem__(self, idx: int) -> str:
         return self.sequences[idx][1]
 
+class QMAPModel(
+    torch.nn.Module,
+    PyTorchModelHubMixin,
+    repo_url="anthol42/qmap"
+):
+    def __init__(self, config):
+        super().__init__()
+        alphabet = ESMAlphabet()
+        self.encoder = ESMEncoder(
+            alphabet=alphabet,
+            **config
+        )
+        self.activation = torch.nn.PReLU()
+
+
+    def forward(self, seqs: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the model.
+        :param seqs: Tensor of shape (batch_size, sequence_length) containing token indices.
+        :return: Tensor of shape (batch_size, embed_dim) containing embeddings.
+        """
+        return self.encoder(seqs)
+
+
 class Encoder:
-    def __init__(self, config: EsmEncoderConfig = EsmEncoderConfig(),
-                 path: str = f"{root}/aligner/model/weights/54.pth",
-                 force_cpu: bool = False):
+    def __init__(self, force_cpu: bool = False):
         self.device = _get_device(force_cpu=force_cpu)
 
+        model = QMAPModel.from_pretrained('anthol42/qmap')
+        model.to(self.device)
+        model.eval()
+
+        self.model = model.encoder
+        self.activation = model.activation
         self.alphabet = ESMAlphabet()
-        model = ESMEncoder(
-            alphabet=self.alphabet,
-            num_layers=config.num_layers,
-            embed_dim=config.embed_dim,
-            attention_heads=config.attention_heads,
-            token_dropout=config.token_dropout,
-            attention_dropout=config.attention_dropout,
-            layer_dropout=config.layer_dropout,
-            head_dropout=config.head_dropout,
-            head_dim=config.head_dim,
-            head_depth=config.head_depth,
-            proj_dim=config.proj_dim,
-            use_clf_token=config.use_clf_token,
-            activation_dim=config.activation_dim,
-            activation_nlayers=config.activation_nlayers,
-            activation_agglomeration=config.activation_agglomeration,
-            norm_embedding=config.norm_embedding,
-            norm=config.norm,
-            prenorm=config.prenorm,
-            linbranch=config.linbranch,
-            head_residual=config.head_residual,
-            learned_pooling=config.learned_pooling,
-            all_layers=config.all_layers
-        )
-        ema_model = EMA(model, beta=0.9999, update_after_step = 500, update_every = 10)
 
-        data = torch.load(path, map_location=torch.device('cpu'))
-        ema_model.load_state_dict(data['ema_state_dict'])
-        self.model = ema_model.ema_model
-        self.model.to(self.device)
-        self.model.eval()
-        self.activation = PReLU()
-        self.activation.load_state_dict(data["activation"])
-        self.activation.to(self.device)
-        self.activation.eval()
-
-    def encode(self, sequences: list[str], batch_size: int = 512) -> VectorizedDB:
+    def encode(self, sequences: list[str], batch_size: int = 512, ids: Optional[List[str]] = None) -> VectorizedDB:
         """
         Encode a list of sequences using the ESM model.
         :param sequences: List of protein sequences to encode.
+        :param ids: The sequence ids. Useful when the sequences are not unique.
         :return: Encoded tensor of shape (batch_size, sequence_length, embed_dim).
         """
         # Make dataloader
@@ -159,10 +152,11 @@ class Encoder:
         all_embeddings = []
         all_sequences = []
         with torch.inference_mode():
+            self.model.eval()
             for seqs, tokens in progress(dataloader, type="pip", desc="Encoding sequences", display=len(dataloader) > 1):
                 tokens = tokens.to(self.device)
-                embeddings = self.model(tokens)
-                all_embeddings.append(embeddings.cpu().half())
+                embeddings = self.model(tokens).cpu()
+                all_embeddings.append(embeddings.half())
                 all_sequences += seqs
 
         # Concatenate all embeddings
@@ -175,7 +169,7 @@ class Encoder:
         all_sequences = [all_sequences[i] for i in sorting_indices]
 
         # Make the Vectorize Sequence Db object
-        return VectorizedDB(all_sequences, all_embeddings)
+        return VectorizedDB(all_sequences, all_embeddings, ids=ids)
 
 
     @staticmethod
@@ -190,6 +184,9 @@ class Encoder:
         :return: DataLoader for the sequences.
         """
         sequences = [(i, seq) for i, seq in enumerate(sequences)]
+        max_len = max(len(seq) for _, seq in sequences)
+        if  max_len > 100:
+            raise ValueError(f"Some sequences are too long ({max_len} > 100). ")
         sorted_sequences = sorted(sequences, key=lambda x: len(x[1]))
         collator = AlignmentCollator(alphabet=alphabet)
         dataloader = torch.utils.data.DataLoader(

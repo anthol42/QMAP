@@ -1,11 +1,16 @@
+import time
+
+from jinja2.nodes import Literal
+
 from .vectorizedDB import VectorizedDB
+from .multi_alignment import MultiAlignment
 from .encoder import Encoder
 import numpy as np
 from .utils import _get_device
 import torch
 from torch import nn
 from pyutils import progress
-from typing import List
+from typing import List, Literal
 from pathlib import Path
 
 root = Path(__file__).parent.parent
@@ -29,13 +34,15 @@ def _batch_align(db1: VectorizedDB, db2: VectorizedDB, batch: int, activation: n
     return iden
 
 
-def align_db(db1: VectorizedDB, db2: VectorizedDB, batch: int = 0, device: str = "auto") -> np.ndarray:
+def align_db(db1: VectorizedDB, db2: VectorizedDB, batch: int = 0,
+             device: str = "auto", index_by: Literal['sequence', 'id'] = 'sequence') -> MultiAlignment:
     """
     Align two vectorized databases and return the identity score matrix. (pseudo identities)
     :param db1: The vectorized database to align on the other db2
     :param db2: The vectorized database that the db1 will be aligned to
     :param batch: The batch number. If 0, the aligment is done in one go. Otherwise, the batch size is the number of sequences of db1 that is aligned on the full db2 per step
     :param device: The device to use. You can use "auto" to use the available accelerator
+    :param index_by: The type of index to use in the multi alignment object
     :return: Identity score matrix of shape (len(db1), len(db2))
     """
     device = _get_device() if device == "auto" else device
@@ -48,15 +55,23 @@ def align_db(db1: VectorizedDB, db2: VectorizedDB, batch: int = 0, device: str =
         else:
             iden = activation(db1.embeddings.to(device) @ db2.embeddings.T.to(device)).cpu()
 
-    return iden.numpy()
+    match index_by:
+        case "sequence":
+            return MultiAlignment(iden.numpy(), db1.sequences, db2.sequences)
+        case "id":
+            return MultiAlignment(iden.numpy(), db1.ids, db2.ids)
+        case _:
+            raise ValueError(f"Unknown index type, got {index_by} while only accept 'sequence' or 'id'")
 
-def align_seq2db(sequences: List[str], db: VectorizedDB, batch: int = 0, device: str = "auto") -> np.ndarray:
+def align_seq2db(sequences: List[str], db: VectorizedDB, batch: int = 0, device: str = "auto",
+                 index_by: Literal['sequence', 'id'] = 'sequence') -> MultiAlignment:
     """
     Align a list of sequences to a vectorized database and return the identity score matrix.
     :param sequences: The list of sequences to align
     :param db: The vectorized database that the sequences will be aligned to
     :param batch: The batch number. If 0, the aligment is done in one go. Otherwise, the batch size is the number of sequences that is aligned on the full db per step
     :param device: The device to use. You can use "auto" to use the available accelerator
+    :param index_by: The type of index to use in the multi alignment object
     :return: Identity score matrix of shape (len(sequences), len(db))
     """
     device = _get_device() if device == "auto" else device
@@ -65,7 +80,7 @@ def align_seq2db(sequences: List[str], db: VectorizedDB, batch: int = 0, device:
     encoder = Encoder()
     seq_db = encoder.encode(sequences)
 
-    return align_db(seq_db, db, batch=batch, device=device)
+    return align_db(seq_db, db, batch=batch, device=device, index_by=index_by)
 
 def align_seq(seq1: str, seq2: str):
     """

@@ -1,19 +1,22 @@
 import torch
-from typing import Union
+from typing import Union, Optional
 
 class VectorizedDB:
     """
     This class contains the sequences and their embeddings.
     """
-    def __init__(self, sequences: list[str], embeddings: torch.Tensor):
+    def __init__(self, sequences: list[str], embeddings: torch.Tensor, ids: Optional[list[str]] = None):
         """
         Initialize the VectorizedDB with sequences and their embeddings.
         :param sequences: List of protein sequences.
         :param embeddings: Tensor of shape (num_sequences, sequence_length, embed_dim).
+        :param ids: List of sequence ids.
         """
         assert len(sequences) == len(embeddings), "Number of sequences must match number of embeddings."
         self.sequences = sequences
         self.embeddings = embeddings
+        self.ids = ids
+        self.has_duplicates = len(set(sequences)) != len(sequences)
 
     def embedding_by_sequence(self, sequence: str) -> torch.Tensor:
         """
@@ -24,6 +27,15 @@ class VectorizedDB:
         index = self.sequences.index(sequence)
         if index == -1:
             raise ValueError(f"Sequence '{sequence}' not found in the database.")
+        return self.embeddings[index]
+
+    def embedding_by_id(self, id: str) -> torch.Tensor:
+        if self.ids is None:
+            raise RuntimeError(f"No sequence ids '{self.ids}' found in the database.")
+
+        index = self.ids.index(id)
+        if index == -1:
+            raise ValueError(f"Sequence '{id}' not found in the database.")
         return self.embeddings[index]
 
     def __getitem__(self, item: Union[str, int]) -> torch.Tensor:
