@@ -11,6 +11,9 @@ from training.train import evaluate
 from data import make_dataloader
 import utils
 from torchmetrics import MeanAbsoluteError, PearsonCorrCoef
+import dotenv
+
+dotenv.load_dotenv()
 
 metrics = {
     "mae": MeanAbsoluteError(),
@@ -82,7 +85,7 @@ if __name__ == "__main__":
             "path": "../peptide_atlas/build",
             "dataset": 'synt',  # Use None for default dataset
             "num_workers": 2,
-            "batch_size": 128,
+            "batch_size": 512,
             "shuffle": True
         }
     }
@@ -97,9 +100,12 @@ if __name__ == "__main__":
         var=0.,
         orthogonality=0.05,
     )
+    loss.activation = model.activation
     loss.to(device)
 
     results, all_preds = evaluate(model,
                                   test_loader, loss, device, metrics=metrics)
     print(results)
+
     # If everything passes, upload
+    model.push_to_hub("anthol42/qmap", token=os.environ["HUGGING_FACE"])
