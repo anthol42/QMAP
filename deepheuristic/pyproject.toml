@@ -9,6 +9,7 @@ dependencies = [
     "deepboard[full]>=0.2.3",
     "ema-pytorch>=0.7.7",
     "fair-esm>=2.0.0",
+    "huggingface-hub>=0.34.3",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.3",
     "numpy>2.0.0",
@@ -17,9 +18,14 @@ dependencies = [
     "pandas>=2.3.0",
     "pillow>=11.2.1",
     "pyyaml>=6.0.2",
+    "qmap",
+    "safetensors>=0.5.3",
     "scipy>=1.15.3",
     "torch>=2.7.1",
     "torchinfo>=1.8.0",
     "torchmetrics>=1.7.2",
     "torchvision>=0.22.1",
 ]
+
+[tool.uv.sources]
+qmap = { path = "../QMAP", editable = true }

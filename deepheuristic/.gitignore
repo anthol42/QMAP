@@ -176,3 +176,7 @@ tmp*
 .weights/
 
 hsearch_*
+
+model_assets/*.safetensors
+model_assets/config.json
+model_assets/README.md
