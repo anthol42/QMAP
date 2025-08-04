@@ -6,23 +6,6 @@ from qmap.toolkit.aligner import aligner
 import numpy as np
 import numpy.testing as npt
 
-@pytest.fixture
-def sequences():
-    return [
-        "DSHAKRHHGYKRKFHEKHHSHRGY", # Normal sequence
-        "KVVVKWVVKVVK",  # Low complexity sequence
-        "YVLLKRKRLIFI", # Synthetic sequence
-        "VVVVVV", # No complexity sequence
-        "VRNHVTCRINRGFCVPIRCPGRTRQIGTCFGPRIKCCRSW", # Normal long sequence
-        "LXXVA", # Contains X
-        "K", # len = 1
-        "SYQRIRSDHDSHSCANNRGWCRPTCFSHEYTDWFNNDVCGSYRCCRPGRRPRTYULLAVAGGHNEEEGHTURVLILIAVEGHRLRGAVLPPEPEPIHKRL" # len = 100
-    ]
-
-@pytest.fixture
-def encoder():
-    return Encoder(force_cpu=True)
-
 def test_encoder_encode_no_batch_no_ids(sequences, encoder):
     """
     Test encoding with a batch size bigger than the number of sequences and no ids.
