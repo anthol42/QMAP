@@ -11,7 +11,7 @@ from .maximize_diversity_split import maximize_diversity_split
 
 def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Union[float, int] = 0.2,
                      threshold: float = 0.55,
-                     method: Literal['max', 'prob', 'random'] = 'prob',
+                     method: Literal['max', 'prob', 'random'] = 'random',
                      temperature: float = 1.0,
                      train_size: Optional[Union[float, int]] = None,
                      random_state: Optional[int] = None,
