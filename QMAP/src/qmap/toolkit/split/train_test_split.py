@@ -8,6 +8,7 @@ from ..clustering import build_graph, leiden_community_detection
 from .random_cluster_split import random_cluster_split
 from .diversity_proportional_split import diversity_proportional_split
 from .maximize_diversity_split import maximize_diversity_split
+from .filtering import filter_out
 
 def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Union[float, int] = 0.2,
                      threshold: float = 0.55,
@@ -17,6 +18,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
                      random_state: Optional[int] = None,
                      shuffle: bool = True,
                      post_filtering: bool = False,
+                     encoder_batch: int = 512,
                      batch_size: int = 0) -> tuple:
     """
     Splits the sequences into training and test sets based on a given test or train size. It will split the data
@@ -45,6 +47,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     :param random_state: If using a random method [prob or random], this is the seed to use for the random number generator. If None, the random number generator will not be seeded.
     :param shuffle: Whether to shuffle the splits at the end or not.
     :param post_filtering: If true, sequences in the training set that have a similarity higher than the threshold to any sequence in the test set will be removed.
+    :param encoder_batch: The batch size of the encoder.
     :param batch_size: If you get an out of memory error, you can reduce the batch size to a smaller value. If set to 0, the batch size will be set to the full dataset size.
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
@@ -76,7 +79,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
 
     # Step 2: Encode the sequences
     encoder = aligner.Encoder(force_cpu=True)
-    db = encoder.encode(sequences)
+    db = encoder.encode(sequences, batch_size=encoder_batch)
 
     # Step 3: Build the graph
     path, _ = build_graph(db, threshold, batch_size=batch_size)
@@ -111,18 +114,25 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     train_sequences = [sequences[i] for i in train_ids]
     test_sequences = [sequences[i] for i in test_ids]
 
-    split_metadata = []
+    train_metadata = []
+    test_metadata = []
     for meta in metadata:
         if hasattr(meta, '__getitem__') and hasattr(meta, '__len__'):
             train_meta = [meta[i] for i in train_ids]
             test_meta = [meta[i] for i in test_ids]
-            split_metadata.extend([train_meta, test_meta])
+            train_metadata.append(train_meta)
+            test_metadata.append(test_meta)
         else:
             raise ValueError("Metadata must be a list of sequences or a similar structure that supports indexing.")
 
     # Step 8: Post-filtering if required
     if post_filtering:
-        # TODO: Implement post-filtering logic
-        raise NotImplementedError("Post-Filtering is not implemented yet. Please implement it according to your needs.")
+        train_sequences, train_metadata = filter_out(train_sequences, train_metadata,
+                                                 ref_sequences=test_sequences, threshold=threshold,
+                                                 encoder_batch_size=encoder_batch, aligner_batch_size=batch_size)
+
+    split_metadata = []
+    for i in range(len(metadata)):
+        split_metadata.extend([train_metadata[i], test_metadata[i]])
 
     return train_sequences, test_sequences, *split_metadata
