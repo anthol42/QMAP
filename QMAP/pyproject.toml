@@ -7,7 +7,10 @@ requires-python = ">=3.13"
 dependencies = [
     "antho-utils>=0.1.0",
     "huggingface-hub>=0.34.3",
+    "igraph>=0.11.9",
+    "leidenalg>=0.10.2",
     "numpy>=2.3.1",
+    "pandas>=2.3.1",
     "safetensors>=0.5.3",
     "torch>=2.7.1",
 ]
@@ -31,4 +34,8 @@ include = [
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "matplotlib>=3.10.3",
+    "scikit-learn>=1.7.1",
+    "transformers>=4.54.1",
+]
