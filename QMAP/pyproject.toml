@@ -36,6 +36,7 @@ include = [
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.3",
+    "pytest>=8.4.1",
     "scikit-learn>=1.7.1",
     "transformers>=4.54.1",
 ]
