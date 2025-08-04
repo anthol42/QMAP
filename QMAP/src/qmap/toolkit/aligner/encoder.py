@@ -1,5 +1,3 @@
-import time
-
 from .model import ESMEncoder
 from .model import ESMAlphabet
 import torch
@@ -154,8 +152,10 @@ class Encoder:
         with torch.inference_mode():
             self.model.eval()
             for seqs, tokens in progress(dataloader, type="pip", desc="Encoding sequences", display=len(dataloader) > 1):
-                tokens = tokens.to(self.device)
-                embeddings = self.model(tokens).cpu()
+                # tokens = tokens.to(self.device)
+                embeddings = self.model(tokens) # .cpu()
+                for seq, emb in zip(seqs, embeddings):
+                    print(seq, emb[:8])
                 all_embeddings.append(embeddings.half())
                 all_sequences += seqs
 
@@ -164,7 +164,9 @@ class Encoder:
 
         # Rever back the embeddings to the original order
         indices = [i for i, _ in dataloader.dataset.sequences]
+
         sorting_indices = torch.argsort(torch.tensor(indices))
+
         all_embeddings = all_embeddings[sorting_indices]
         all_sequences = [all_sequences[i] for i in sorting_indices]
 

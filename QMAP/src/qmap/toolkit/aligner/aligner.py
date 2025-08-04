@@ -1,7 +1,3 @@
-import time
-
-from jinja2.nodes import Literal
-
 from .vectorizedDB import VectorizedDB
 from .multi_alignment import MultiAlignment
 from .encoder import Encoder
