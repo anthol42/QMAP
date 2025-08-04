@@ -152,10 +152,8 @@ class Encoder:
         with torch.inference_mode():
             self.model.eval()
             for seqs, tokens in progress(dataloader, type="pip", desc="Encoding sequences", display=len(dataloader) > 1):
-                # tokens = tokens.to(self.device)
-                embeddings = self.model(tokens) # .cpu()
-                for seq, emb in zip(seqs, embeddings):
-                    print(seq, emb[:8])
+                tokens = tokens.to(self.device)
+                embeddings = self.model(tokens).cpu()
                 all_embeddings.append(embeddings.half())
                 all_sequences += seqs
 
