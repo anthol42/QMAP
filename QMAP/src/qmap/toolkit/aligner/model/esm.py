@@ -12,17 +12,16 @@ class FC_layer(nn.Module):
         super().__init__()
         if norm is None:
             norm = 'none'
-        match norm:
-            case 'Batch':
-                norm = nn.BatchNorm1d
-            case 'Layer':
-                norm = nn.LayerNorm
-            case 'ESM':
-                norm = ESM1bLayerNorm
-            case 'none':
-                norm = nn.Identity
-            case _:
-                raise ValueError(f'Unknown norm: {norm}')
+        if norm == 'Batch':
+            norm = nn.BatchNorm1d
+        elif norm == 'Layer':
+            norm = nn.LayerNorm
+        elif norm == 'ESM':
+            norm = ESM1bLayerNorm
+        elif norm == 'none':
+            norm = nn.Identity
+        else:
+            raise ValueError(f'Unknown norm: {norm}')
 
         if dropout == 0:
             if prenorm:
