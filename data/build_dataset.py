@@ -107,8 +107,8 @@ for i, sample in enumerate(data):
 if not os.path.exists(BUILD_PATH):
     os.makedirs(BUILD_PATH)
 
-with open(f'{BUILD_PATH}/dataset.jsonl', "w") as f:
-    f.writelines(json.dumps(item) + "\n" for item in data)
+with open(f'{BUILD_PATH}/dataset.json', "w") as f:
+    json.dump(dataset_tmp, f)
 
 # 2: Store it as a fasta file where the header is the ID and the sequence is the sequence
 # This fasta file will be used to compute the Identity matrix
