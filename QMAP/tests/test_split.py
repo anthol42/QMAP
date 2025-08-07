@@ -47,3 +47,19 @@ def test_train_test_split_seq_only(sequences):
         assert seq == idsmapping[id_], f"Sequence {seq} does not match its ID {id_} in the training set."
     for seq, id_ in zip(test_sequences, test_ids):
         assert seq == idsmapping[id_], f"Sequence {seq} does not match its ID {id_} in the test set."
+
+
+def test_train_test_split(sequences):
+    sequences.append("LXXVEG")
+    ids = [f"id_{i}" for i in range(len(sequences))]
+    idsmapping = dict(zip(ids, sequences))
+
+    train_sequences, test_sequences, train_ids, test_ids = split.train_test_split(
+        sequences,
+        ids,
+        test_size=0.2,
+        post_filtering=True)
+    assert len(train_sequences) == len(train_ids), "Train and test sets should not overlap."
+
+    # Check that the order of sequences and ids is the same
+    assert [seq == idsmapping[id_] for seq, id_ in zip(train_sequences, train_ids)], "Sequences and IDs in the training set do not match."

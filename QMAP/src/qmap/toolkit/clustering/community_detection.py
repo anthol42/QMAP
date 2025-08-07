@@ -6,7 +6,7 @@ class DEF_MAPPER(dict):
     def __getitem__(self, item):
         return item
 
-def leiden_community_detection(graph: ig.Graph, idx2id_mapping: dict = DEF_MAPPER()) -> pd.DataFrame:
+def leiden_community_detection(graph: ig.Graph, idx2id_mapping: dict = DEF_MAPPER(), n_iterations: int = -1) -> pd.DataFrame:
     """
     Detects communities in a graph using the Leiden algorithm. It returns a dataframe containing the belonging of
     each node id to a community (Cluster).
@@ -14,7 +14,7 @@ def leiden_community_detection(graph: ig.Graph, idx2id_mapping: dict = DEF_MAPPE
     :param idx2id_mapping: A dictionary mapping from the node index (an integer generated incrementally) to any id.
     :return: The dataframe containing the node ids and their corresponding cluster ids.
     """
-    partition = leidenalg.find_partition(graph, leidenalg.ModularityVertexPartition, n_iterations=-1)
+    partition = leidenalg.find_partition(graph, leidenalg.ModularityVertexPartition, n_iterations=n_iterations)
 
     # Now, make dataframe with communities
     df = {"node_id": [], "community": []}

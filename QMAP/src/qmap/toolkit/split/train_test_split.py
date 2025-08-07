@@ -19,7 +19,8 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
                      shuffle: bool = True,
                      post_filtering: bool = False,
                      encoder_batch: int = 512,
-                     batch_size: int = 0) -> tuple:
+                     batch_size: int = 0,
+                     n_iterations: int = -1) -> tuple:
     """
     Splits the sequences into training and test sets based on a given test or train size. It will split the data
     along the clusters, reducing the risk that similar sequences are in both sets. The clusters are defined as sequences
@@ -49,10 +50,11 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     :param post_filtering: If true, sequences in the training set that have a similarity higher than the threshold to any sequence in the test set will be removed.
     :param encoder_batch: The batch size of the encoder.
     :param batch_size: If you get an out of memory error, you can reduce the batch size to a smaller value. If set to 0, the batch size will be set to the full dataset size.
+    :param n_iterations: The number of iterations to run the Leiden community detection algorithm. If set to -1, it will run until convergence.
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
     # Step 1: Validate inputs
-    if not isinstance(sequences, list) or not all(isinstance(seq, str) for seq in sequences):
+    if not hasattr(sequences, '__getitem__') or not all(isinstance(seq, str) for seq in sequences):
         raise ValueError("Sequences must be a list of strings.")
     if isinstance(test_size, float) and (test_size <= 0 or test_size > 1) or isinstance(test_size, int) and test_size <= 0:
         raise ValueError("test_size must be a float between 0 and 1 or an integer greater than 0.")
@@ -86,7 +88,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     g = ig.Graph.Read_Edgelist(path, directed=False)
 
     # Step 4: Retrieve the clusters
-    clusters = leiden_community_detection(g)
+    clusters = leiden_community_detection(g, n_iterations=n_iterations)
 
     # Step 5: Split the clusters into training and test sets
     if method == 'random':
@@ -127,9 +129,11 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
 
     # Step 8: Post-filtering if required
     if post_filtering:
-        train_sequences, train_metadata = filter_out(train_sequences, train_metadata,
+        train = filter_out(train_sequences, *train_metadata,
                                                  ref_sequences=test_sequences, threshold=threshold,
                                                  encoder_batch_size=encoder_batch, aligner_batch_size=batch_size)
+        train_sequences = train[0]
+        train_metadata = train[1:]
 
     split_metadata = []
     for i in range(len(metadata)):
