@@ -136,10 +136,10 @@ class FC_projector(nn.Module):
             x = x[:, 0]
         else:
             if padding_mask is not None:
-                value_mask = padding_mask.to(x.dtype).unsqueeze(-1)
+                value_mask = 1 - padding_mask.to(x.dtype).unsqueeze(-1)
                 if self.pooling_param is not None:
                     x = self.pooling_param[:L] * x
-                x = (x * (1 - value_mask)).sum(dim=1) / value_mask.sum(dim=1)
+                x = (x * value_mask).sum(dim=1) / value_mask.sum(dim=1)
             else:
                 if self.pooling_param is not None:
                     x = self.pooling_param[:L] * x

@@ -15,7 +15,7 @@ echo "Running on node: $HOSTNAME"
 echo "Start time: $(date)"
 
 # Run the command
-uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --verbose=2
+uv run main.py --experiment=experiment1 --config=configs/ESM_35M.yml --verbose=2 --comment="Fix_padding_bug"
 
 echo "End time: $(date)"
 echo "Job completed"
