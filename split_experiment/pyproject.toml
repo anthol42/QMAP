@@ -14,7 +14,9 @@ dependencies = [
     "numpy>=2.3.0",
     "pandas>=2.3.0",
     "qmap",
+    "scikit-learn>=1.7.1",
     "tqdm>=4.67.1",
+    "transformers>=4.55.0",
 ]
 
 [tool.uv.sources]

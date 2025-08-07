@@ -21,6 +21,7 @@ import os
 import json
 import math
 from typing import Union, List, Optional
+import numpy as np
 
 from DBAASP.peptide import Peptide
 from DBAASP.utils import activity_parser
@@ -60,10 +61,11 @@ for i, sample in enumerate(data):
     targets = {}
     for target in targets_raw:
         if target.specie not in targets:
-            targets[target.specie] = (target.minActivity, target.maxActivity)
+            centers = [activity_parser(target.minActivity, target.maxActivity)]
+            targets[target.specie] = (centers, target.minActivity, target.maxActivity)
         else:
             new_minAct, new_maxAct = target.minActivity, target.maxActivity
-            old_minAct, old_maxAct = targets[target.specie]
+            centers, old_minAct, old_maxAct = targets[target.specie]
             if new_minAct < old_minAct:
                 minAct = new_minAct
             else:
@@ -72,13 +74,14 @@ for i, sample in enumerate(data):
                 maxAct = new_maxAct
             else:
                 maxAct = old_maxAct
-            targets[target.specie] = (minAct, maxAct)
+            centers.append(activity_parser(target.minActivity, target.maxActivity))
+            targets[target.specie] = (centers, minAct, maxAct)
 
     # Now, do the agglomeration by mean log MIC
-    targets = {specie: activity_parser(minActivity, maxActivity) for specie, (minActivity, maxActivity) in targets.items()}
+    targets = {specie: (np.mean(np.log10(centers)), minActivity, maxActivity) for specie, (centers, minActivity, maxActivity) in targets.items()}
 
     # Filter targets such that there are no NaN values
-    targets = {specie: activity for specie, activity in targets.items() if not math.isnan(activity) and activity > 0}
+    targets = {specie: activity for specie, activity in targets.items() if not math.isnan(activity[0]) and activity[0] > 0}
 
     if len(targets) == 0 and math.isnan(hemolitic) and math.isnan(cytotoxic):
         # Useless peptide, no targets and no activities

@@ -10,8 +10,8 @@ class Identity:
     def __init__(self, path: str = ".cache", dataset_path: str = "../data/build/dataset.fasta"):
         self.dm = np.load(f"{path}/identity_matrix.npy")
         with open(f"{path}/row_ids.txt", 'r') as f:
-            self.dm_ids = np.array([int(id_) for id_ in f.readlines()])
-
+            # self.dm_ids = np.array([int(id_) for id_ in f.readlines()])
+            self.dm_ids = {int(line.strip()): i for i, line in enumerate(f.readlines())}
         dataset = read_fasta(dataset_path)
         self.dataset = {int(id_): seq for id_, seq in dataset}
 
@@ -19,15 +19,15 @@ class Identity:
         """
         Returns the identity between two sequences given their IDs.
         """
-        if id1 not in self.dataset:
-            raise ValueError(f"IDs {id1}not found in the dataset.")
-        if id2 not in self.dataset:
-            raise ValueError(f"IDs {id2} not found in the dataset.")
+        # if id1 not in self.dataset:
+        #     raise ValueError(f"IDs {id1}not found in the dataset.")
+        # if id2 not in self.dataset:
+        #     raise ValueError(f"IDs {id2} not found in the dataset.")
 
-        i = np.where(self.dm_ids == id1)[0][0]
-        j = np.where(self.dm_ids == id2)[0][0]
+        # i = np.where(self.dm_ids == id1)[0][0]
+        # j = np.where(self.dm_ids == id2)[0][0]
 
-        return self.dm[i, j]
+        return self.dm[self.dm_ids[id1], self.dm_ids[id2]]
 
 
 
