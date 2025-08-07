@@ -78,7 +78,7 @@ for i, sample in enumerate(data):
             targets[target.specie] = (centers, minAct, maxAct)
 
     # Now, do the agglomeration by mean log MIC
-    targets = {specie: (np.mean(np.log10(centers)), minActivity, maxActivity) for specie, (centers, minActivity, maxActivity) in targets.items()}
+    targets = {specie: (10**np.mean(np.log10(centers)), minActivity, maxActivity) for specie, (centers, minActivity, maxActivity) in targets.items()}
 
     # Filter targets such that there are no NaN values
     targets = {specie: activity for specie, activity in targets.items() if not math.isnan(activity[0]) and activity[0] > 0}
