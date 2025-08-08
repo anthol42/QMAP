@@ -3,9 +3,10 @@ from torch.utils.data import Dataset
 from typing import List, Literal, Sequence, Optional, Tuple
 from .sample import Sample
 import json
+from huggingface_hub import hf_hub_download
+
 from .subset import BenchmarkSubset
 from ..toolkit.utils import sequence_entropy
-
 from ..toolkit.aligner import Encoder, align_db
 
 COMPLEXITY_THRESHOLD = 3.1 # Median of natural peptides (From peptide atlas)
@@ -44,7 +45,12 @@ class QMAPBenchmark(BenchmarkSubset):
         self.split = split
         self.threshold = threshold / 100  # Convert to fraction
 
-        self.raw_dataset = self._load_dataset(f"../data/build/benchmark_threshold-{threshold}_split-{split}.json")
+        path = hf_hub_download(
+            repo_id="anthol42/qmap_benchmark_2025",
+            filename=f"benchmark_threshold-{threshold}_split-{split}.json",
+            repo_type="dataset"
+        )
+        self.raw_dataset = self._load_dataset(path)
         self.modified_termini = modified_termini
         self.allow_unusual_aa = unusual_aa
         self.d_amino_acids = d_amino_acids
