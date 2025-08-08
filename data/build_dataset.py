@@ -1,6 +1,6 @@
 """
 # Description:
-Make the official dataset for the benchmark 2025. (Do not split).
+Make the official dataset for the benchmark 2025.
 
 # Features:
 - Only monomeric peptides
@@ -22,11 +22,15 @@ import json
 import math
 from typing import Union, List, Optional
 import numpy as np
+from huggingface_hub import HfApi, login
+from dotenv import load_dotenv
 from qmap.toolkit.split import train_test_split
 
 from DBAASP.peptide import Peptide
 from DBAASP.utils import activity_parser
 from DBAASP.fetch import fetch_raw
+
+load_dotenv()
 
 LOAD_CACHE: bool = True
 BUILD_PATH = "build"
@@ -132,3 +136,25 @@ for split in range(5):
         # Save the dataset as json
         with open(f'{BUILD_PATH}/benchmark_threshold-{int(100*threshold)}_split-{split}.json', "w") as f:
             json.dump(test_samples, f)
+
+# Upload to hugginface
+hf_token = os.getenv('HUGGINGFACE_HUB_TOKEN')
+if not hf_token:
+    raise ValueError("HUGGINGFACE_HUB_TOKEN not found in environment variables")
+login(token=hf_token)
+
+api = HfApi()
+api.create_repo(
+    repo_id="anthol42/qmap_benchmark_2025",
+    repo_type="dataset",
+    exist_ok=True
+)
+
+for split in range(5):
+    for threshold in [0.55, 0.6]:
+        api.upload_file(
+            path_or_fileobj=f'{BUILD_PATH}/benchmark_threshold-{int(100*threshold)}_split-{split}.json',
+            path_in_repo=f'benchmark_threshold-{int(100*threshold)}_split-{split}.json',  # name in the repo
+            repo_id="anthol42/qmap_benchmark_2025",
+            repo_type="dataset"
+        )
