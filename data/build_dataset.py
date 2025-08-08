@@ -22,6 +22,7 @@ import json
 import math
 from typing import Union, List, Optional
 import numpy as np
+from qmap.toolkit.split import train_test_split
 
 from DBAASP.peptide import Peptide
 from DBAASP.utils import activity_parser
@@ -115,3 +116,19 @@ with open(f'{BUILD_PATH}/dataset.json', "w") as f:
 with open(f'{BUILD_PATH}/dataset.fasta', 'w') as f:
     for sample in dataset_tmp:
         f.write(f'>{sample["ID"]}\n{sample["Sequence"].upper()}\n')
+
+
+# 3: Split the dataset 5 times with two different threshold: 55% and 60% with 20% of the data in the test set
+# We will keep only sequences smaller than 100 amino acids
+dataset_tmp = [sample for sample in dataset_tmp if len(sample['Sequence']) <= 100]
+for split in range(5):
+    for threshold in [0.55, 0.6]:
+        train_sequences, test_sequences, train_samples, test_samples = train_test_split(
+            [sample['Sequence'] for sample in dataset_tmp],
+            dataset_tmp,
+            threshold=threshold,
+            test_size=0.2,
+        )
+        # Save the dataset as json
+        with open(f'{BUILD_PATH}/benchmark_threshold-{int(100*threshold)}_split-{split}.json', "w") as f:
+            json.dump(test_samples, f)

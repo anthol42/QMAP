@@ -29,14 +29,94 @@ class QMAPBenchmark(Dataset):
         :param show_all: If true, even if the modified_termini, unusual amino acids or D-amino acids are not used, the dataset will still return the sequences. Otherwise, it will skip those sequences.
         """
         super().__init__()
+
         self.raw_dataset = self._load_dataset("../data/build/dataset.json")
+        self.modified_termini = modified_termini
+        self.unusual_aa = unusual_aa
+        self.d_amino_acids = d_amino_acids
+        self.specie_as_input = specie_as_input
+        self.species_subset = species_subset if species_subset is not None else []
+        self.dataset_type = dataset_type
+        self.show_all = show_all
+
+        if self.dataset_type not in ['MIC', 'Hemolytic', 'Cytotoxic']:
+            raise ValueError("dataset_type must be one of 'MIC', 'Hemolytic', or 'Cytotoxic'.")
+
+        if self.specie_as_input:
+            # Remake the sequences
+            sequences = []
+            species = []
+            targets = []
+            c_termini = []
+            n_termini = []
+            unusual_aa = []
+            if self.dataset_type == 'MIC':
+                for sample in self.raw_dataset:
+                    for specie, value in sample.targets:
+                        if specie in species_subset:
+                            sequences.append(sample.sequence)
+                            species.append(specie)
+                            targets.append(value[0])
+                            c_termini.append(sample.c_terminus)
+                            n_termini.append(sample.n_terminus)
+                            unusual_aa.append(sample.unusual_aa)
+            else:
+                for sample in self.raw_dataset:
+                    if self.dataset_type == 'Hemolytic':
+                        if sample.hemolytic is not None:
+                            targets.append(sample.hemolytic)
+                            species.append(self.dataset_type)
+                            sequences.append(sample.sequence)
+                            c_termini.append(sample.c_terminus)
+                            n_termini.append(sample.n_terminus)
+                            unusual_aa.append(sample.unusual_aa)
+                    elif self.dataset_type == 'Cytotoxic':
+                        if sample.cytotoxic is not None:
+                            targets.append(sample.cytotoxic)
+                            species.append(self.dataset_type)
+                            sequences.append(sample.sequence)
+                            c_termini.append(sample.c_terminus)
+                            n_termini.append(sample.n_terminus)
+                            unusual_aa.append(sample.unusual_aa)
+            self.sequences = sequences
+            self.species = species
+            self.targets = targets
+            self.c_termini = c_termini
+            self.n_termini = n_termini
+            self.unusual_aa = unusual_aa
+
+        else:
+            sequences = []
+            species = None
+            targets = []
+            c_termini = []
+            n_termini = []
+            unusual_aa = []
+            for sample in self.raw_dataset:
+                label = {target: np.nan for target in species_subset}
+                for target, (value, minMIC, maxMIC) in sample.targets.items():
+                    if target in species_subset:
+                        label[target] = value
+                label_array = np.array([value for value in label.values()])
+                if not np.isnan(label_array).all():
+                    sequences.append(sample.sequence)
+                    targets.append(label_array)
+                    c_termini.append(sample.c_terminus)
+                    n_termini.append(sample.n_terminus)
+                    unusual_aa.append(sample.unusual_aa)
+
+            self.sequences = sequences
+            self.species = species
+            self.targets = targets
+            self.c_termini = c_termini
+            self.n_termini = n_termini
+            self.unusual_aa = unusual_aa
+
+
+
 
     @property
     def inputs(self):
-        pass
-
-    @property
-    def targets(self):
         pass
 
     def __len__(self):
