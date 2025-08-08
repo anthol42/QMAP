@@ -34,12 +34,16 @@ class QMAPBenchmark(Dataset):
         :param show_all: If true, even if the modified_termini, unusual amino acids or D-amino acids are not used, the dataset will still return the sequences. Otherwise, it will skip those sequences.
         """
         super().__init__()
+        if split not in [0, 1, 2, 3, 4]:
+            raise ValueError("split must be one of 0, 1, 2, 3, or 4.")
+        if threshold not in [55, 60]:
+            raise ValueError("threshold must be either 55 or 60.")
         self.split = split
         self.threshold = threshold / 100  # Convert to fraction
 
         self.raw_dataset = self._load_dataset(f"../data/build/benchmark_threshold-{threshold}_split-{split}.json")
         self.modified_termini = modified_termini
-        self.unusual_aa = unusual_aa
+        self.allow_unusual_aa = unusual_aa
         self.d_amino_acids = d_amino_acids
         self.specie_as_input = specie_as_input
         self.species_subset = species_subset if species_subset is not None else []
@@ -60,7 +64,7 @@ class QMAPBenchmark(Dataset):
             if self.dataset_type == 'MIC':
                 if self.specie_as_input:
                     # Add one entry per species
-                    for specie, (consensus, minMIC, maxMIC) in sample.targets:
+                    for specie, (consensus, minMIC, maxMIC) in sample.targets.items():
                         if specie in self.species_subset:
                             self._add_sample_data(sample, specie, consensus, minMIC, maxMIC)
                 else:
@@ -82,8 +86,8 @@ class QMAPBenchmark(Dataset):
                                         np.array(list(label_max.values())))
             else:
                 # Handle Hemolytic/Cytotoxic
-                target_value = getattr(sample, self.dataset_type.lower(), None)
-                if target_value is not None:
+                target_value = getattr(sample, self.dataset_type.lower(), np.nan)
+                if not np.isnan(target_value):
                     self._add_sample_data(sample, self.dataset_type if self.specie_as_input else None, target_value)
 
         # Set attributes
@@ -117,7 +121,7 @@ class QMAPBenchmark(Dataset):
         return tuple(out)
 
     def __len__(self):
-        return len(self.raw_dataset)
+        return len(self.sequences)
 
     def __getitem__(self, idx) -> Tuple:
         """
@@ -139,7 +143,7 @@ class QMAPBenchmark(Dataset):
         if self.modified_termini:
             out.append(self.n_termini[idx])
             out.append(self.c_termini[idx])
-        if self.unusual_aa:
+        if self.allow_unusual_aa:
             out.append(self.unusual_aa[idx])
 
         target = self.targets[idx]
@@ -173,12 +177,18 @@ class QMAPBenchmark(Dataset):
 
     def accuracy(self, predictions: np.ndarray) -> float:
         """
-        Compute the accuracy of the predictions. A good prediction is one that is within the MIC range. This method
-        only work with MIC datasets.
+        Compute the accuracy of the predictions. A good prediction is one that is within the MIC range if a range is
+        provided. This method only work with MIC datasets.
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
         :return: The accuracy of the predictions.
         """
-        good = np.logical_and(predictions >= self.min_targets, predictions <= self.max_targets)
+        mins = np.array(self.min_targets).reshape(-1)
+        maxs = np.array(self.max_targets).reshape(-1)
+        preds = predictions.reshape(-1)
+
+        good = np.logical_and(preds >= mins, preds <= maxs)[mins != maxs]
+        # Ignore nans
+        good = good[~np.logical_or(np.isnan(mins), np.isnan(maxs))[mins != maxs]]
         return np.sum(good) / len(good)
 
     def _filter_dataset(self):
@@ -186,7 +196,7 @@ class QMAPBenchmark(Dataset):
         for i in range(len(self.sequences)):
             if not self.modified_termini and (self.n_termini[i] is not None or self.c_termini[i] is not None):
                 mask[i] = False
-            if not self.unusual_aa and self.unusual_aa[i]:
+            if not self.allow_unusual_aa and len(self.unusual_aa[i]) > 0:
                 mask[i] = False
             if not self.d_amino_acids and any(aa.islower() for aa in self.sequences[i]):
                 mask[i] = False
@@ -219,20 +229,24 @@ class QMAPBenchmark(Dataset):
 
         dataset = []
         for sample in data:
-            sequence = sample['sequence']
-            n_terminus = sample['n_terminus']
-            c_terminus = sample['c_terminus']
-            unusual_aa = sample['unusual_aa']
-            unusual_aa_names = sample['unusual_aa_names']
-            targets = sample['targets']
-            hemolytic = sample['hemolytic']
-            cytotoxic = sample['cytotoxic']
+            sequence = sample['Sequence']
+            n_terminus = sample['N Terminus']
+            n_terminus_name = sample['N Terminus Name']
+            c_terminus = sample['C Terminus']
+            c_terminus_name = sample['C Terminus Name']
+            unusual_aa = sample['Unusual Amino Acids']
+            unusual_aa_names = sample['Unusual Amino Acids Names']
+            targets = sample['Targets']
+            hemolytic = sample['Hemolitic Activity']
+            cytotoxic = sample['Cytotoxic Activity']
 
             dataset.append(Sample(
-                id_=sample['id'],
+                id_=sample['ID'],
                 sequence=sequence,
                 n_terminus=n_terminus,
+                n_terminus_name=n_terminus_name,
                 c_terminus=c_terminus,
+                c_terminus_name=c_terminus_name,
                 unusual_aa=unusual_aa,
                 unusual_aa_names=unusual_aa_names,
                 targets=targets,
