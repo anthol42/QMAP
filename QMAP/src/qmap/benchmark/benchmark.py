@@ -3,10 +3,14 @@ from torch.utils.data import Dataset
 from typing import List, Literal, Sequence, Optional, Tuple
 from .sample import Sample
 import json
+from .subset import BenchmarkSubset
+from ..toolkit.utils import sequence_entropy
 
 from ..toolkit.aligner import Encoder, align_db
 
-class QMAPBenchmark(Dataset):
+COMPLEXITY_THRESHOLD = 3.1 # Median of natural peptides (From peptide atlas)
+
+class QMAPBenchmark(BenchmarkSubset):
     """
     Class representing the QMAP benchmark testing dataset. It is a subclass of `torch.utils.data.Dataset`, so it can be
     easily used with PyTorch's DataLoader. However, it is easy to extract the sequences and the labels from it to use
@@ -33,7 +37,6 @@ class QMAPBenchmark(Dataset):
         :param dataset_type: The type of dataset to use. If you want to measure the MIC prediction, use 'MIC'. If you want to accuracy at predicting whether a peptide is hemolytic or cytotoxic, use 'Hemolytic' or 'Cytotoxic' respectively.
         :param show_all: If true, even if the modified_termini, unusual amino acids or D-amino acids are not used, the dataset will still return the sequences. Otherwise, it will skip those sequences.
         """
-        super().__init__()
         if split not in [0, 1, 2, 3, 4]:
             raise ValueError("split must be one of 0, 1, 2, 3, or 4.")
         if threshold not in [55, 60]:
@@ -95,59 +98,63 @@ class QMAPBenchmark(Dataset):
         self.max_targets = self.max_targets if self.dataset_type == 'MIC' else None
         self.min_targets = self.min_targets if self.dataset_type == 'MIC' else None
 
+        super().__init__(self.sequences, self.species, self.targets, self.c_termini, self.n_termini, self.unusual_aa,
+                         self.max_targets, self.min_targets,
+                         modified_termini=modified_termini,
+                         allow_unusual_aa=unusual_aa,
+                         d_amino_acids=d_amino_acids,
+                         specie_as_input=specie_as_input)
+
         # Remove samples that have modification that are not specified
         if not self.show_all:
             self._filter_dataset()
 
+
     @property
-    def inputs(self) -> Tuple[List[str], ...]:
-        """
-        Depending on the initialization parameters, this property will return different values. It will return:
-        - The sequence (str) always
-        - The specie (str) if specie_as_input is True
-        - The N terminus (str) if modified_termini is True
-        - The C terminus (str) if modified_termini is True
-        - The unusual amino acids (dict) if unusual_aa is True
-        :return: All the inputs for the model.
-        """
-        out = [self.sequences]
-        if self.specie_as_input:
-            out.append(self.species)
-        if self.modified_termini:
-            out.append(self.n_termini)
-            out.append(self.c_termini)
-        if self.unusual_aa:
-            out.append(self.unusual_aa)
-        return tuple(out)
+    def low_complexity(self) -> BenchmarkSubset:
+        complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
 
-    def __len__(self):
-        return len(self.sequences)
+        mask = complexity < COMPLEXITY_THRESHOLD
 
-    def __getitem__(self, idx) -> Tuple:
-        """
-        Depending on the initialization parameters, this method will return different values. It will return:
-        - The sequence (str) always
-        - The specie (str) if specie_as_input is True
-        - The N terminus (str) if modified_termini is True
-        - The C terminus (str) if modified_termini is True
-        - The unusual amino acids (dict) if unusual_aa is True
-        - The target (float or np.ndarray) always
+        return BenchmarkSubset(
+            sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
+            species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
+            targets=[tgt for i, tgt in enumerate(self.targets) if mask[i]],
+            c_termini=[ct for i, ct in enumerate(self.c_termini) if mask[i]],
+            n_termini=[nt for i, nt in enumerate(self.n_termini) if mask[i]],
+            unusual_aa=[ua for i, ua in enumerate(self.unusual_aa) if mask[i]],
+            max_targets=[mt for i, mt in enumerate(self.max_targets) if mask[i]] if self.max_targets is not None else None,
+            min_targets=[mt for i, mt in enumerate(self.min_targets) if mask[i]] if self.min_targets is not None else None,
 
-        :param idx: The index of the sample to retrieve.
-        :return: The inputs for a single sample and the target.
-        """
-        sequence = self.sequences[idx]
-        out = [sequence]
-        if self.specie_as_input:
-            out.append(self.species[idx])
-        if self.modified_termini:
-            out.append(self.n_termini[idx])
-            out.append(self.c_termini[idx])
-        if self.allow_unusual_aa:
-            out.append(self.unusual_aa[idx])
+            modified_termini=self.modified_termini,
+            allow_unusual_aa=self.allow_unusual_aa,
+            d_amino_acids=self.d_amino_acids,
+            specie_as_input=self.specie_as_input,
+        )
 
-        target = self.targets[idx]
-        return *out, target
+    @property
+    def high_complexity(self) -> BenchmarkSubset:
+        complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
+
+        mask = complexity >= COMPLEXITY_THRESHOLD
+
+        return BenchmarkSubset(
+            sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
+            species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
+            targets=[tgt for i, tgt in enumerate(self.targets) if mask[i]],
+            c_termini=[ct for i, ct in enumerate(self.c_termini) if mask[i]],
+            n_termini=[nt for i, nt in enumerate(self.n_termini) if mask[i]],
+            unusual_aa=[ua for i, ua in enumerate(self.unusual_aa) if mask[i]],
+            max_targets=[mt for i, mt in enumerate(self.max_targets) if
+                         mask[i]] if self.max_targets is not None else None,
+            min_targets=[mt for i, mt in enumerate(self.min_targets) if
+                         mask[i]] if self.min_targets is not None else None,
+
+            modified_termini=self.modified_termini,
+            allow_unusual_aa=self.allow_unusual_aa,
+            d_amino_acids=self.d_amino_acids,
+            specie_as_input=self.specie_as_input,
+        )
 
     def get_train_mask(self, sequences: List[str],
                        encoder_batch_size: int = 512,
@@ -174,22 +181,6 @@ class QMAPBenchmark(Dataset):
         mask = alignments.alignment_matrix.max(axis=1) > self.threshold
 
         return ~mask
-
-    def accuracy(self, predictions: np.ndarray) -> float:
-        """
-        Compute the accuracy of the predictions. A good prediction is one that is within the MIC range if a range is
-        provided. This method only work with MIC datasets.
-        :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
-        :return: The accuracy of the predictions.
-        """
-        mins = np.array(self.min_targets).reshape(-1)
-        maxs = np.array(self.max_targets).reshape(-1)
-        preds = predictions.reshape(-1)
-
-        good = np.logical_and(preds >= mins, preds <= maxs)[mins != maxs]
-        # Ignore nans
-        good = good[~np.logical_or(np.isnan(mins), np.isnan(maxs))[mins != maxs]]
-        return np.sum(good) / len(good)
 
     def _filter_dataset(self):
         mask = [True] * len(self.sequences)
