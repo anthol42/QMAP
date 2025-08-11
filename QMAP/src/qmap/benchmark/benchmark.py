@@ -24,6 +24,7 @@ class QMAPBenchmark(BenchmarkSubset):
                  modified_termini: bool = False,
                  unusual_aa: bool = False,
                  d_amino_acids: bool = False,
+                 forbidden_aa: Optional[Sequence[str]] = tuple(),
                  specie_as_input: bool = False,
                  species_subset: Optional[List[str]] = None,
                  dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'] = 'MIC',
@@ -33,6 +34,7 @@ class QMAPBenchmark(BenchmarkSubset):
         :param modified_termini: If True, the dataset will return the N and C terminus smiles string. Otherwise, sequences containing modified termini will be skipped.
         :param unusual_aa: If True, the dataset will return the unusual amino acids as a dictionary of positions and their. Otherwise, sequences containing unusual amino acids will be skipped.
         :param d_amino_acids: If True, the dataset will return sequences with D-amino acids. Otherwise, sequences containing D-amino acids will be skipped.
+        :param forbidden_aa: A sequence of amino acids that should not be passed to the model. If present in the sequence, the sequence will be dropped.
         :param specie_as_input: If True, the dataset will return a tuple of (sequence, specie) and the target will be a scalar. Otherwise, all species in species_subset will be returned as a single tensor as target.
         :param species_subset: The species to include in the dataset as targets. If None, all species will be included.
         :param dataset_type: The type of dataset to use. If you want to measure the MIC prediction, use 'MIC'. If you want to accuracy at predicting whether a peptide is hemolytic or cytotoxic, use 'Hemolytic' or 'Cytotoxic' respectively.
@@ -54,6 +56,7 @@ class QMAPBenchmark(BenchmarkSubset):
         self.modified_termini = modified_termini
         self.allow_unusual_aa = unusual_aa
         self.d_amino_acids = d_amino_acids
+        self.forbidden_aa = forbidden_aa
         self.specie_as_input = specie_as_input
         self.species_subset = species_subset if species_subset is not None else []
         self.dataset_type = dataset_type
@@ -108,7 +111,6 @@ class QMAPBenchmark(BenchmarkSubset):
                          self.max_targets, self.min_targets,
                          modified_termini=modified_termini,
                          allow_unusual_aa=unusual_aa,
-                         d_amino_acids=d_amino_acids,
                          specie_as_input=specie_as_input)
 
         # Remove samples that have modification that are not specified
@@ -196,6 +198,8 @@ class QMAPBenchmark(BenchmarkSubset):
             if not self.allow_unusual_aa and len(self.unusual_aa[i]) > 0:
                 mask[i] = False
             if not self.d_amino_acids and any(aa.islower() for aa in self.sequences[i]):
+                mask[i] = False
+            if any(aa in self.forbidden_aa for aa in self.sequences[i]):
                 mask[i] = False
 
         self.sequences = [seq for i, seq in enumerate(self.sequences) if mask[i]]

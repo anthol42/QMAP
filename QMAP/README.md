@@ -5,5 +5,7 @@ benchmark (test set)
 
 
 ## TODO
-- [ ] Post filter with invalid char option
+- [X] Post filter with invalid char option
 - [ ] Metrics method that calculates the metrics of the preds agains the benchmark
+- [ ] Targets return np array
+- [ ] Inputs does not return tuple if only one input is given

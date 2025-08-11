@@ -8,12 +8,10 @@ class BenchmarkSubset(Dataset):
                      *,
                      modified_termini: bool = False,
                      allow_unusual_aa: bool = False,
-                     d_amino_acids: bool = False,
                      specie_as_input: bool = False,
                  ):
         self.modified_termini = modified_termini
         self.allow_unusual_aa = allow_unusual_aa
-        self.d_amino_acids = d_amino_acids
         self.specie_as_input = specie_as_input
 
         self.sequences = sequences
