@@ -9,8 +9,12 @@ dependencies = [
     "h5py>=3.14.0",
     "numpy==1.22.0",
     "pandas<2.0",
+    "qmap",
     "scikit-learn>=1.7.1",
     "six==1.15",
     "tensorflow==2.11.1",
     "testresources==2.0.1",
 ]
+
+[tool.uv.sources]
+qmap = { path = "../../QMAP" }

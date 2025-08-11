@@ -1,12 +1,14 @@
 from src.load_data import load_df_from_dbs
 from src.nn import conv_model, evaluate, evaluate_as_classifier, evaluate_model
 from src.settings import MAX_SEQUENCE_LENGTH, character_to_index, CHARACTER_DICT, max_mic_buffer, MAX_MIC
+from pyutils import Colors
 
 from sklearn.model_selection import train_test_split
 import numpy as np
 import random
 from Bio import SeqIO
 import argparse
+from qmap.benchmark.benchmark import QMAPBenchmark
 
 def get_bacterium_df(bacterium, df):
     bacterium_df = df.loc[(df.bacterium.str.contains(bacterium))].groupby(['sequence', 'bacterium'])
@@ -93,6 +95,48 @@ def train_model(bacterium, negatives_ratio=1, epochs=100):
     print(evaluate_model(model, test_x, test_y))
 
     return model
+
+def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
+    """
+    Bacterium can be E. coli, P. aeruginosa, etc.
+    When with_negatives is False, classification error will be 0
+    and error on correctly classified/active only/all will be equal
+    because all peptides in the dataset are active
+    """
+    DATA_PATH = 'data/'
+    df = load_df_from_dbs(DATA_PATH)
+    bacterium_df = get_bacterium_df(bacterium, df)
+    # Filter out sequence larger than 100
+    bacterium_df = bacterium_df.loc[bacterium_df['sequence'].str.len() < 100]
+    print("Found %s sequences for %s" % (len(bacterium_df), bacterium))
+    bacterium_df['vector'] = bacterium_df.sequence.apply(sequence_to_vector)
+
+    # Make the train set
+    for i in range(5):
+        print(f'{Colors.orange}Running split {i}{Colors.reset}')
+        benchmark = QMAPBenchmark(i, 55,
+                                  species_subset=['Escherichia coli'],
+                                  )
+        x = np.array(list(bacterium_df.vector.values))
+        y = bacterium_df.value.values
+
+        # Mask sequences too close to the test set
+        sequences = bacterium_df['sequence'].tolist()
+        mask = benchmark.get_train_mask(sequences)
+        train_x = x[mask]
+        train_y = y[mask]
+        train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
+
+        test_x, test_y = benchmark.inputs, benchmark.targets
+        test_x = np.array([sequence_to_vector(seq) for seq in test_x[0]])
+        test_y = np.log10(np.array(test_y)[:, 0])
+
+        model = conv_model()
+        model.fit(train_x, train_y, epochs=epochs)
+        print(f"{Colors.green}Avg. MIC error (correctly classified, active only, all)")
+        print(evaluate(model, test_x, test_y))
+        print(evaluate_model(model, test_x, test_y))
+        print(Colors.reset)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
