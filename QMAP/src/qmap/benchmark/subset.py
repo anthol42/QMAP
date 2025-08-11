@@ -16,7 +16,7 @@ class BenchmarkSubset(Dataset):
 
         self.sequences = sequences
         self.species = species
-        self.targets = targets
+        self._targets = targets
         self.c_termini = c_termini
         self.n_termini = n_termini
         self.unusual_aa = unusual_aa
@@ -44,6 +44,10 @@ class BenchmarkSubset(Dataset):
         if self.allow_unusual_aa:
             out.append(self.unusual_aa)
         return tuple(out)
+
+    @property
+    def targets(self) -> np.ndarray:
+        return np.array(self._targets)
 
     def __len__(self):
         return len(self.sequences)

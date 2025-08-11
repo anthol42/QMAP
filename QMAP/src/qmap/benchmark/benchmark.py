@@ -66,7 +66,7 @@ class QMAPBenchmark(BenchmarkSubset):
             raise ValueError("dataset_type must be one of 'MIC', 'Hemolytic', or 'Cytotoxic'.")
 
         # Initialize data containers
-        self.sequences, self.species, self.targets = [], [], []
+        self.sequences, self.species, self._targets = [], [], []
         self.c_termini, self.n_termini, self.unusual_aa = [], [], []
         self.max_targets, self.min_targets = [], []
 
@@ -107,7 +107,7 @@ class QMAPBenchmark(BenchmarkSubset):
         self.max_targets = self.max_targets if self.dataset_type == 'MIC' else None
         self.min_targets = self.min_targets if self.dataset_type == 'MIC' else None
 
-        super().__init__(self.sequences, self.species, self.targets, self.c_termini, self.n_termini, self.unusual_aa,
+        super().__init__(self.sequences, self.species, self._targets, self.c_termini, self.n_termini, self.unusual_aa,
                          self.max_targets, self.min_targets,
                          modified_termini=modified_termini,
                          allow_unusual_aa=unusual_aa,
@@ -127,7 +127,7 @@ class QMAPBenchmark(BenchmarkSubset):
         return BenchmarkSubset(
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
             species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
-            targets=[tgt for i, tgt in enumerate(self.targets) if mask[i]],
+            targets=[tgt for i, tgt in enumerate(self._targets) if mask[i]],
             c_termini=[ct for i, ct in enumerate(self.c_termini) if mask[i]],
             n_termini=[nt for i, nt in enumerate(self.n_termini) if mask[i]],
             unusual_aa=[ua for i, ua in enumerate(self.unusual_aa) if mask[i]],
@@ -149,7 +149,7 @@ class QMAPBenchmark(BenchmarkSubset):
         return BenchmarkSubset(
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
             species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
-            targets=[tgt for i, tgt in enumerate(self.targets) if mask[i]],
+            targets=[tgt for i, tgt in enumerate(self._targets) if mask[i]],
             c_termini=[ct for i, ct in enumerate(self.c_termini) if mask[i]],
             n_termini=[nt for i, nt in enumerate(self.n_termini) if mask[i]],
             unusual_aa=[ua for i, ua in enumerate(self.unusual_aa) if mask[i]],
@@ -204,7 +204,7 @@ class QMAPBenchmark(BenchmarkSubset):
 
         self.sequences = [seq for i, seq in enumerate(self.sequences) if mask[i]]
         self.species = [spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None
-        self.targets = [tgt for i, tgt in enumerate(self.targets) if mask[i]]
+        self._targets = [tgt for i, tgt in enumerate(self._targets) if mask[i]]
         self.c_termini = [ct for i, ct in enumerate(self.c_termini) if mask[i]]
         self.n_termini = [nt for i, nt in enumerate(self.n_termini) if mask[i]]
         self.unusual_aa = [ua for i, ua in enumerate(self.unusual_aa) if mask[i]]
@@ -215,7 +215,7 @@ class QMAPBenchmark(BenchmarkSubset):
         """Helper to add sample data to containers."""
         self.sequences.append(sample.sequence)
         self.species.append(specie or self.dataset_type)
-        self.targets.append(target)
+        self._targets.append(target)
         self.c_termini.append(sample.c_terminus)
         self.n_termini.append(sample.n_terminus)
         self.unusual_aa.append(sample.unusual_aa)
