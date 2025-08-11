@@ -107,7 +107,7 @@ class QMAPBenchmark(BenchmarkSubset):
         self.max_targets = self.max_targets if self.dataset_type == 'MIC' else None
         self.min_targets = self.min_targets if self.dataset_type == 'MIC' else None
 
-        super().__init__(self.sequences, self.species, self._targets, self.c_termini, self.n_termini, self.unusual_aa,
+        super().__init__(self.split, threshold, self.sequences, self.species, self._targets, self.c_termini, self.n_termini, self.unusual_aa,
                          self.max_targets, self.min_targets,
                          modified_termini=modified_termini,
                          allow_unusual_aa=unusual_aa,
@@ -125,6 +125,8 @@ class QMAPBenchmark(BenchmarkSubset):
         mask = complexity < COMPLEXITY_THRESHOLD
 
         return BenchmarkSubset(
+            split=self.split,
+            threshold=int(100*self.threshold),
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
             species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
             targets=[tgt for i, tgt in enumerate(self._targets) if mask[i]],
@@ -136,7 +138,6 @@ class QMAPBenchmark(BenchmarkSubset):
 
             modified_termini=self.modified_termini,
             allow_unusual_aa=self.allow_unusual_aa,
-            d_amino_acids=self.d_amino_acids,
             specie_as_input=self.specie_as_input,
         )
 
@@ -147,6 +148,8 @@ class QMAPBenchmark(BenchmarkSubset):
         mask = complexity >= COMPLEXITY_THRESHOLD
 
         return BenchmarkSubset(
+            split=self.split,
+            threshold=int(100 * self.threshold),
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
             species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
             targets=[tgt for i, tgt in enumerate(self._targets) if mask[i]],
@@ -160,7 +163,6 @@ class QMAPBenchmark(BenchmarkSubset):
 
             modified_termini=self.modified_termini,
             allow_unusual_aa=self.allow_unusual_aa,
-            d_amino_acids=self.d_amino_acids,
             specie_as_input=self.specie_as_input,
         )
 

@@ -5,13 +5,16 @@ from .QMAP_metrics import QMAPMetrics, r2_score
 from scipy.stats import spearmanr, kendalltau, pearsonr
 
 class BenchmarkSubset(Dataset):
-    def __init__(self, sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
+    def __init__(self, split: int, threshold: Literal[55, 60], sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
                      n_termini: List[str], unusual_aa: List[dict[int, str]], max_targets: List[float], min_targets: List[float],
                      *,
                      modified_termini: bool = False,
                      allow_unusual_aa: bool = False,
                      specie_as_input: bool = False,
                  ):
+        self.split = split
+        self.threshold = threshold / 100
+
         self.modified_termini = modified_termini
         self.allow_unusual_aa = allow_unusual_aa
         self.specie_as_input = specie_as_input
@@ -96,20 +99,42 @@ class BenchmarkSubset(Dataset):
         good = good[~np.logical_or(np.isnan(mins), np.isnan(maxs))[mins != maxs]]
         return np.sum(good) / len(good)
 
-    def compute_metrics(self, predictions: np.ndarray) -> QMAPMetrics:
+    def compute_metrics(self, predictions: np.ndarray, log: bool = True) -> QMAPMetrics:
         """
         Compute the QMAP metrics for the predictions.
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
+        :param log: If true, apply a log10 on the targets.
         :return: The metrics for the predictions.
         """
-        mse = np.mean((self.targets - predictions) ** 2)
-        mae = np.mean(np.abs(self.targets - predictions))
-        rmse = np.sqrt(mse)
-        r2 = r2_score(self.targets, predictions)
-        spearman = spearmanr(self.targets, predictions).statistic
-        kendalls_tau = kendalltau(self.targets, predictions).statistic
-        pearson = pearsonr(self.targets, predictions).statistic
+        if predictions.ndim == 1:
+            predictions = predictions[:, None]
+        if predictions.ndim > 2:
+            raise ValueError("Predictions must have a shape: (N_samples, N_species) if specie_as_input is False or (N_samples,)  otherwise")
+        targets = np.log10(self.targets) if log else self.targets
+        mse = 0
+        mae = 0
+        rmse = 0
+        r2 = 0
+        spearman = 0
+        kendalls_tau = 0
+        pearson = 0
+        for col in range(predictions.shape[1]):
+            mse += np.mean((targets[:, col] - predictions[:, col]) ** 2)
+            mae += np.mean(np.abs(targets[:, col] - predictions[:, col]))
+            rmse += np.sqrt(mse)
+            r2 += r2_score(targets[:, col], predictions[:, col])
+            spearman += spearmanr(targets[:, col], predictions[:, col]).statistic
+            kendalls_tau += kendalltau(targets[:, col], predictions[:, col]).statistic
+            pearson += pearsonr(targets[:, col], predictions[:, col]).statistic
 
-        return QMAPMetrics(rmse=rmse, mse=mse, mae=mae, r2=r2, spearman=spearman, kendalls_tau=kendalls_tau, pearson=pearson)
+        n = predictions.shape[1]
+        return QMAPMetrics(split=self.split, threshold=int(100 * self.threshold),
+                           rmse=rmse / n,
+                           mse=mse / n,
+                           mae=mae / n,
+                           r2=r2 / n,
+                           spearman=spearman / n,
+                           kendalls_tau=kendalls_tau / n,
+                           pearson=pearson / n)
 
 

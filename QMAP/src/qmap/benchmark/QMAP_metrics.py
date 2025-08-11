@@ -21,10 +21,16 @@ class QMAPMetrics:
 
     @property
     def md_row(self):
+        """
+        Return a row of a markdown table containing the metrics values rounded to 4 decimal points.
+        """
         return f'| {self.split} | {self.threshold} | {self.rmse:.4f} | {self.mse:.4f} | {self.mae:.4f} | {self.r2:.4f} | {self.spearman:.4f} | {self.kendalls_tau:.4f} | {self.pearson:.4f} |\n'
 
     @property
     def md_col(self):
+        """
+        Return a column of a markdown table containing the metrics values
+        """
         return f'| Split | Threshold | RMSE | MSE | MAE | R2 | Spearman | Kendall\'s Tau | Pearson |\n' \
                f'|-------|-----------|------|-----|-----|----|----------|----------------|---------|\n'
 
