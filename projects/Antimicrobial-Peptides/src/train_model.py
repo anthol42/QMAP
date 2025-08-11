@@ -8,7 +8,7 @@ import numpy as np
 import random
 from Bio import SeqIO
 import argparse
-from qmap.benchmark.benchmark import QMAPBenchmark
+from qmap.benchmark import QMAPBenchmark
 
 def get_bacterium_df(bacterium, df):
     bacterium_df = df.loc[(df.bacterium.str.contains(bacterium))].groupby(['sequence', 'bacterium'])
@@ -112,9 +112,10 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
     bacterium_df['vector'] = bacterium_df.sequence.apply(sequence_to_vector)
 
     # Make the train set
+    all_results = []
     for i in range(5):
         print(f'{Colors.orange}Running split {i}{Colors.reset}')
-        benchmark = QMAPBenchmark(i, 55,
+        benchmark = QMAPBenchmark(i, 60,
                                   species_subset=['Escherichia coli'],
                                   )
         x = np.array(list(bacterium_df.vector.values))
@@ -127,16 +128,24 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
         train_y = y[mask]
         train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
 
+        benchmark = benchmark.high_complexity
         test_x, test_y = benchmark.inputs, benchmark.targets
-        test_x = np.array([sequence_to_vector(seq) for seq in test_x[0]])
+        test_x = np.array([sequence_to_vector(seq) for seq in test_x])
         test_y = np.log10(np.array(test_y)[:, 0])
 
         model = conv_model()
         model.fit(train_x, train_y, epochs=epochs)
         print(f"{Colors.green}Avg. MIC error (correctly classified, active only, all)")
         print(evaluate(model, test_x, test_y))
-        print(evaluate_model(model, test_x, test_y))
+        preds = model.predict(test_x)
+        results = benchmark.compute_metrics(preds)
+        all_results.append(results)
+        print(results)
         print(Colors.reset)
+
+    print(all_results[0].md_col)
+    for results in all_results:
+        print(results.md_row)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

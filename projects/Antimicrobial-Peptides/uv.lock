@@ -48,7 +48,7 @@ requires-dist = [
     { name = "h5py", specifier = ">=3.14.0" },
     { name = "numpy", specifier = "==1.22.0" },
     { name = "pandas", specifier = "<2.0" },
-    { name = "qmap", directory = "../../QMAP" },
+    { name = "qmap", editable = "../../QMAP" },
     { name = "scikit-learn", specifier = ">=1.7.1" },
     { name = "six", specifier = "==1.15" },
     { name = "tensorflow", specifier = "==2.11.1" },
@@ -908,7 +908,7 @@ wheels = [
 [[package]]
 name = "qmap"
 version = "0.0.0"
-source = { directory = "../../QMAP" }
+source = { editable = "../../QMAP" }
 dependencies = [
     { name = "antho-utils" },
     { name = "huggingface-hub" },
