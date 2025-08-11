@@ -43,7 +43,7 @@ class BenchmarkSubset(Dataset):
             out.append(self.c_termini)
         if self.allow_unusual_aa:
             out.append(self.unusual_aa)
-        return tuple(out)
+        return tuple(out) if len(out) > 1 else out[0]
 
     @property
     def targets(self) -> np.ndarray:
