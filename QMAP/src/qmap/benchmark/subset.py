@@ -1,6 +1,8 @@
 from torch.utils.data import Dataset
 from typing import List, Tuple, Optional, Literal
 import numpy as np
+from .QMAP_metrics import QMAPMetrics, r2_score
+from scipy.stats import spearmanr, kendalltau, pearsonr
 
 class BenchmarkSubset(Dataset):
     def __init__(self, sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
@@ -93,3 +95,21 @@ class BenchmarkSubset(Dataset):
         # Ignore nans
         good = good[~np.logical_or(np.isnan(mins), np.isnan(maxs))[mins != maxs]]
         return np.sum(good) / len(good)
+
+    def compute_metrics(self, predictions: np.ndarray) -> QMAPMetrics:
+        """
+        Compute the QMAP metrics for the predictions.
+        :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
+        :return: The metrics for the predictions.
+        """
+        mse = np.mean((self.targets - predictions) ** 2)
+        mae = np.mean(np.abs(self.targets - predictions))
+        rmse = np.sqrt(mse)
+        r2 = r2_score(self.targets, predictions)
+        spearman = spearmanr(self.targets, predictions).statistic
+        kendalls_tau = kendalltau(self.targets, predictions).statistic
+        pearson = pearsonr(self.targets, predictions).statistic
+
+        return QMAPMetrics(rmse=rmse, mse=mse, mae=mae, r2=r2, spearman=spearman, kendalls_tau=kendalls_tau, pearson=pearson)
+
+
