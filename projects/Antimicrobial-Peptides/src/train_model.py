@@ -1,3 +1,5 @@
+import os
+import pandas as pd
 from src.load_data import load_df_from_dbs
 from src.nn import conv_model, evaluate, evaluate_as_classifier, evaluate_model
 from src.settings import MAX_SEQUENCE_LENGTH, character_to_index, CHARACTER_DICT, max_mic_buffer, MAX_MIC
@@ -113,39 +115,70 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
 
     # Make the train set
     all_results = []
+    all_results_high_complexity = []
+    all_results_low_complexity = []
+    all_results_high_eff = []
     for i in range(5):
-        print(f'{Colors.orange}Running split {i}{Colors.reset}')
-        benchmark = QMAPBenchmark(i, 60,
-                                  species_subset=['Escherichia coli'],
-                                  )
-        x = np.array(list(bacterium_df.vector.values))
-        y = bacterium_df.value.values
+        for threshold in [55, 60]:
+            print(f'{Colors.orange}Running split {i}{Colors.reset}')
+            benchmark = QMAPBenchmark(i, threshold,
+                                      species_subset=['Escherichia coli'],
+                                      )
+            x = np.array(list(bacterium_df.vector.values))
+            y = bacterium_df.value.values
 
-        # Mask sequences too close to the test set
-        sequences = bacterium_df['sequence'].tolist()
-        mask = benchmark.get_train_mask(sequences)
-        train_x = x[mask]
-        train_y = y[mask]
-        train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
+            # Mask sequences too close to the test set
+            sequences = bacterium_df['sequence'].tolist()
+            mask = benchmark.get_train_mask(sequences)
+            train_x = x[mask]
+            train_y = y[mask]
+            train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
 
-        benchmark = benchmark.high_complexity
-        test_x, test_y = benchmark.inputs, benchmark.targets
-        test_x = np.array([sequence_to_vector(seq) for seq in test_x])
-        test_y = np.log10(np.array(test_y)[:, 0])
+            test_x, test_y = benchmark.inputs, benchmark.targets
+            test_x = np.array([sequence_to_vector(seq) for seq in test_x])
 
-        model = conv_model()
-        model.fit(train_x, train_y, epochs=epochs)
-        print(f"{Colors.green}Avg. MIC error (correctly classified, active only, all)")
-        print(evaluate(model, test_x, test_y))
-        preds = model.predict(test_x)
-        results = benchmark.compute_metrics(preds)
-        all_results.append(results)
-        print(results)
-        print(Colors.reset)
+            model = conv_model()
+            model.fit(train_x, train_y, epochs=epochs)
+            print(f"{Colors.green}Avg. MIC error (correctly classified, active only, all)")
+            print(evaluate(model, test_x, test_y))
+            preds = model.predict(test_x)
+            results = benchmark.compute_metrics(preds)
+            all_results.append(results)
+            print(results)
+            print(Colors.reset)
 
-    print(all_results[0].md_col)
+            high_comp_benchmark = benchmark.high_complexity
+            test_x = np.array([sequence_to_vector(seq) for seq in high_comp_benchmark.inputs])
+            preds = model.predict(test_x)
+            all_results_high_complexity.append(high_comp_benchmark.compute_metrics(preds))
+
+            low_comp_benchmark = benchmark.low_complexity
+            test_x = np.array([sequence_to_vector(seq) for seq in low_comp_benchmark.inputs])
+            preds = model.predict(test_x)
+            all_results_low_complexity.append(low_comp_benchmark.compute_metrics(preds))
+
+            high_eff_benchmark = benchmark.high_efficiency
+            test_x = np.array([sequence_to_vector(seq) for seq in high_eff_benchmark.inputs])
+            preds = model.predict(test_x)
+            all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds))
+
+
+    all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
+    high_complexity = pd.DataFrame([result.dict() for result in all_results_high_complexity])
+    low_complexity = pd.DataFrame([result.dict() for result in all_results_low_complexity])
+    high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
+
+    # Export to pandas
+    if not os.path.exists('.cache'):
+        os.makedirs('.cache')
+    all_result_table.to_csv('.cache/full.csv')
+    high_complexity.to_csv('.cache/high_complexity.csv')
+    low_complexity.to_csv('.cache/low_complexity.csv')
+    high_efficiency.to_csv('.cache/high_efficiency.csv')
+
+    print(all_results[0].md_col, end="")
     for results in all_results:
-        print(results.md_row)
+        print(results.md_row, end="")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

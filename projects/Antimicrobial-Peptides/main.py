@@ -10,6 +10,8 @@ if __name__ == '__main__':
     parser.add_argument('--option', type=str, default='qmap')
     args = parser.parse_args()
     if args.option == 'qmap':
+        print("Running with QMAP testing")
         train_model_qmap(bacterium=args.bacterium, negatives_ratio=args.negatives, epochs=args.epochs)
     else:
+        print("Running original code")
         train_model(bacterium=args.bacterium, negatives_ratio=args.negatives, epochs=args.epochs)
