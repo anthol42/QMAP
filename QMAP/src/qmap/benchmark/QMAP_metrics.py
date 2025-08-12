@@ -34,6 +34,9 @@ class QMAPMetrics:
         return f'| Split | Threshold | RMSE | MSE | MAE | R2 | Spearman | Kendall\'s Tau | Pearson |\n' \
                f'|-------|-----------|------|-----|-----|----|----------|----------------|---------|\n'
 
+    def dict(self):
+        return dict(split=self.split,threshold=self.threshold,rmse=self.rmse,mse=self.mse,mae=self.mae,
+                    r2=self.r2,spearman=self.spearman,kendalls_tau=self.kendalls_tau,pearson=self.pearson)
     def __repr__(self):
         return f'QMAPMetrics(split: {self.split}, threshold: {self.threshold}%)'
 
