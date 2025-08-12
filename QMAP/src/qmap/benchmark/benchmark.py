@@ -166,6 +166,29 @@ class QMAPBenchmark(BenchmarkSubset):
             specie_as_input=self.specie_as_input,
         )
 
+    @property
+    def high_efficiency(self) -> BenchmarkSubset:
+        mask = self.targets < 10
+
+        return BenchmarkSubset(
+            split=self.split,
+            threshold=int(100 * self.threshold),
+            sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
+            species=[spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None,
+            targets=[tgt for i, tgt in enumerate(self._targets) if mask[i]],
+            c_termini=[ct for i, ct in enumerate(self.c_termini) if mask[i]],
+            n_termini=[nt for i, nt in enumerate(self.n_termini) if mask[i]],
+            unusual_aa=[ua for i, ua in enumerate(self.unusual_aa) if mask[i]],
+            max_targets=[mt for i, mt in enumerate(self.max_targets) if
+                         mask[i]] if self.max_targets is not None else None,
+            min_targets=[mt for i, mt in enumerate(self.min_targets) if
+                         mask[i]] if self.min_targets is not None else None,
+
+            modified_termini=self.modified_termini,
+            allow_unusual_aa=self.allow_unusual_aa,
+            specie_as_input=self.specie_as_input,
+        )
+
     def get_train_mask(self, sequences: List[str],
                        encoder_batch_size: int = 512,
                        align_batch_size: int = 0,

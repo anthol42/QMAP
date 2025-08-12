@@ -1218,8 +1218,8 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.34.3" },
     { name = "igraph", specifier = ">=0.11.9" },
     { name = "leidenalg", specifier = ">=0.10.2" },
-    { name = "numpy", specifier = "==1.22" },
-    { name = "pandas", specifier = "==1.4" },
+    { name = "numpy", specifier = ">=1.22" },
+    { name = "pandas", specifier = ">=1.4" },
     { name = "safetensors", specifier = ">=0.5.3" },
     { name = "torch", specifier = ">=2.7.1" },
 ]
