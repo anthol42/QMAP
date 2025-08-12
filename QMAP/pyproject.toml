@@ -12,7 +12,7 @@ dependencies = [
     "numpy>=1.22",
     "pandas>=1.4",
     "safetensors>=0.5.3",
-    "torch>=2.7.1",
+    "torch>=2.2",
 ]
 keywords = ["qmap", "protein", "clustering", "sequence", "database", "machine learning", "deep learning"]
 [build-system]

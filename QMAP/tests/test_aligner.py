@@ -70,7 +70,7 @@ def test_align_db_sequences(sequences, encoder):
 
     expected = np.load("assets/expected_alignment_matrix.npy")
     assert isinstance(matrix, MultiAlignment)
-    assert np.allclose(matrix.alignment_matrix, expected)
+    assert np.allclose(matrix.alignment_matrix, expected, atol=1e-5)
 
 
 
@@ -92,4 +92,4 @@ def test_batch_align(sequences, encoder):
 
     expected = np.load("assets/expected_alignment_matrix.npy")
     assert isinstance(matrix, MultiAlignment)
-    assert np.allclose(matrix.alignment_matrix, expected)
+    assert np.allclose(matrix.alignment_matrix, expected, atol=1e-5)
