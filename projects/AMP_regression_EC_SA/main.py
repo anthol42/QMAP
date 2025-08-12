@@ -63,7 +63,7 @@ if __name__ == '__main__':
                 mask = benchmark.get_train_mask(train_data["SEQUENCE"].values)
 
                 test_predict_list, model, _, _, _, _ = train(0, 12,
-                                                              0.05, train_data.loc[mask],
+                                                              1., train_data.loc[mask],
                                                               test_data,
                                                               epochs=20,
                                                               frozen_layers=0,
