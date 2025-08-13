@@ -64,12 +64,12 @@ if __name__ == "__main__":
     high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
 
     # Export to pandas
-    if not os.path.exists('.cache'):
-        os.makedirs('.cache')
-    all_result_table.to_csv('.cache/full.csv')
-    high_complexity.to_csv('.cache/high_complexity.csv')
-    low_complexity.to_csv('.cache/low_complexity.csv')
-    high_efficiency.to_csv('.cache/high_efficiency.csv')
+    if not os.path.exists('results'):
+        os.makedirs('results')
+    all_result_table.to_csv('results/full.csv')
+    high_complexity.to_csv('results/high_complexity.csv')
+    low_complexity.to_csv('results/low_complexity.csv')
+    high_efficiency.to_csv('results/high_efficiency.csv')
 
     print(all_results[0].md_col, end="")
     for results in all_results:
