@@ -2,7 +2,9 @@ import pandas as pd
 
 def maximize_diversity_split(clusters: pd.DataFrame, test_ratio: float = 0.2) -> tuple[list[int], list[int]]:
     """
-    Splits the clusters into training and test sets based on a given test ratio.
+    Splits the clusters into training and test sets based on a given test ratio. It makes the test set by starting with
+    the smallest clusters and adding them until the test set reaches the desired size.
+
     :param clusters: The clusters DataFrame containing sequence IDs and their corresponding cluster IDs.
     :param test_ratio: The ratio of sequences to be included in the test set.
     :return: Two sets of ids, one for training and one for testing.

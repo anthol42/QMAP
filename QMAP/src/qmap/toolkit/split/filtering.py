@@ -9,6 +9,12 @@ def filter_out(train_sequences: List[str], *metadata: List[Any], ref_sequences: 
     Removes samples in train_sequences and metadata that are more similar than the threshold to any sequence in
     ref_sequences.
 
+    ## Example
+    ```python
+    from qmap.toolkit.split import filter_out
+
+    train_seq, train_labels = filter_out(train_sequences, train_labels, ref_sequences=test_sequences, threshold=0.55)
+    ```
     :param train_sequences: The sequences that will be filtered.
     :param metadata: The metadata associated with the sequences that will be filtered.
     :param ref_sequences: The reference sequences, usually the test set sequences or the benchmark sequences.
