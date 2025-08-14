@@ -8,7 +8,7 @@ from .subset import BenchmarkSubset
 from ..toolkit.utils import sequence_entropy
 from ..toolkit.aligner import Encoder, align_db
 
-COMPLEXITY_THRESHOLD = 2.42 # 90% of natural peptides (peptide atlas) have a complexity over this value. So we consider sequences with a complexity below this value as low complexity.
+COMPLEXITY_THRESHOLD = 2.62 # The median of the DBAASP dataset.
 
 class QMAPBenchmark(BenchmarkSubset):
     """
@@ -145,7 +145,7 @@ class QMAPBenchmark(BenchmarkSubset):
     def low_complexity(self) -> BenchmarkSubset:
         """
         Returns a subset of the benchmark with only low complexity sequences. A low complexity sequence is defined as a
-        sequence that have an entropy below 90% of the natural peptides in the Peptide Atlas dataset.
+        sequence that have an entropy below the median complexity of the DBAASP dataset.
         """
         complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
 
@@ -172,7 +172,7 @@ class QMAPBenchmark(BenchmarkSubset):
     def high_complexity(self) -> BenchmarkSubset:
         """
         Return a subset of the benchmark with only high complexity sequences. A high complexity sequence is defined as a
-        sequence that have an entropy similar to the natural peptides in the Peptide Atlas dataset.
+        sequence that have an entropy superior to the median complexity of the DBAASP dataset (Similar to natural peptides).
         """
         complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
 
