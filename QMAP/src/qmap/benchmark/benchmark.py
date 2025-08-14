@@ -1,5 +1,4 @@
 import numpy as np
-from torch.utils.data import Dataset
 from typing import List, Literal, Sequence, Optional, Tuple
 from .sample import Sample
 import json
@@ -9,13 +8,37 @@ from .subset import BenchmarkSubset
 from ..toolkit.utils import sequence_entropy
 from ..toolkit.aligner import Encoder, align_db
 
-COMPLEXITY_THRESHOLD = 3.1 # Median of natural peptides (From peptide atlas)
+COMPLEXITY_THRESHOLD = 2.42 # 90% of natural peptides (peptide atlas) have a complexity over this value. So we consider sequences with a complexity below this value as low complexity.
 
 class QMAPBenchmark(BenchmarkSubset):
     """
     Class representing the QMAP benchmark testing dataset. It is a subclass of `torch.utils.data.Dataset`, so it can be
     easily used with PyTorch's DataLoader. However, it is easy to extract the sequences and the labels from it to use
-    it with other libraries such as tensorflow or keras.
+    it with other libraries such as tensorflow or keras. You can do this by using the `inputs` and `targets` attributes.
+
+    Once you have the predictions of your model, you can call the `compute_metrics` method to compute the metrics of
+    your model on the given test set. You can also evaluate the performances of your model on subsets like
+    `high_complexity`, `low_complexity` or `high_efficiency`. You can select the subset from the attributes of the
+    same name. The subset have the same interface as the `QMAPBenchmark` class, so you can use them with the same
+    methods!
+
+    To use the benchmark, you must select at least the split (from 0 to 4) and the threshold (55 or 60). It is highly
+    recommended to test your model on all splits to get a better estimate of its real-world performance and to
+    accurately compare it with other models. To do so, you must use the same hyperparameters, but change the training
+    and validation dataset. For each split, use the `get_train_mask` method to get a mask indicating which sequences
+    can be used in the training set and validation set. This mask will be True for sequences that are allowed in the
+    training set and False for sequences that are too similar to a sequence in the test set. Train your model on the
+    subset of your training dataset where the mask is True and evaluate it on the benchmark dataset. Do this for all
+    splits. See the example section for more details.
+
+    Thresholds:\
+    - 55: This threshold enables a split that is considered natural as it have a maximum identity distribution between
+    the train and test set similar to natural independent peptide datasets.
+
+    - 60: This threshold enables a harder split because it increases the diversity of the test set. Even if the
+    maximum identity distribution is shifted to more similar sequences between train and test compared to the natural
+    split (55), it is considered conservative as models do not perform as well on this split. It is recommended to use
+    this split as it gives a more conservative estimate of the model's real-world performance.
     """
     def __init__(self,
                  split: int = 0,
@@ -120,6 +143,10 @@ class QMAPBenchmark(BenchmarkSubset):
 
     @property
     def low_complexity(self) -> BenchmarkSubset:
+        """
+        Returns a subset of the benchmark with only low complexity sequences. A low complexity sequence is defined as a
+        sequence that have an entropy below 90% of the natural peptides in the Peptide Atlas dataset.
+        """
         complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
 
         mask = complexity < COMPLEXITY_THRESHOLD
@@ -143,6 +170,10 @@ class QMAPBenchmark(BenchmarkSubset):
 
     @property
     def high_complexity(self) -> BenchmarkSubset:
+        """
+        Return a subset of the benchmark with only high complexity sequences. A high complexity sequence is defined as a
+        sequence that have an entropy similar to the natural peptides in the Peptide Atlas dataset.
+        """
         complexity = np.array([sequence_entropy(seq) for seq in self.sequences])
 
         mask = complexity >= COMPLEXITY_THRESHOLD
@@ -168,6 +199,10 @@ class QMAPBenchmark(BenchmarkSubset):
 
     @property
     def high_efficiency(self) -> BenchmarkSubset:
+        """
+        Return a subset of the benchmark with only high efficiency sequences. A high efficiency sequence is defined as
+        a sample that have a MIC under 10µM.
+        """
         mask = self.targets < 10
 
         return BenchmarkSubset(
@@ -196,11 +231,12 @@ class QMAPBenchmark(BenchmarkSubset):
                        ) -> np.ndarray:
         """
         Returns a mask indicating which sequences can be in the training set because they are not too similar to any
-        other sequence in the test set.
+        other sequence in the test set. It returns a boolean mask where True means that the sequence is allowed in the
+        training / validation set and False means that the sequence is too similar to a sequence in the test set and
+        must be excluded.
         :param sequences: The sequences to check.
         :param encoder_batch_size: The batch size to use for encoding. Change this value if you run out of memory.
-        :param align_batch_size: The batch size to use for alignment. If 0, the batch size will be the full dataset. Change this
-        value if you run out of memory.
+        :param align_batch_size: The batch size to use for alignment. If 0, the batch size will be the full dataset. Change this value if you run out of memory.
         :param force_cpu: If True, the alignment will be forced to run on CPU.
         :return: True if the sequence is allowed and False otherwise.
         """
