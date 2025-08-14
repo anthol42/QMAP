@@ -2,6 +2,7 @@ from typing import Optional, Literal, List, Any, Union
 import igraph as ig
 import math
 import numpy as np
+import os
 
 from .. import aligner
 from ..clustering import build_graph, leiden_community_detection
@@ -30,7 +31,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     first for the test set in order to maximize the diversity. The prob method sample the clusters in the test set
     proportionally to their size, so smaller clusters are more likely to be included in the test set. The random method
     assign the same probability to each cluster, so the sampling is uniform across all clusters. You can choose the
-    temperature that is only available for the 'prob' method. The higher this parameter is, the more uniform the
+    temperature parameter, but is only available for the 'prob' method. The higher this parameter is, the more uniform the
     probability distribution will be. Note that using a temperature of 0 is equivalent to the 'max' method, and using a
     temperature of infinity is equivalent to the 'random' method.
 
@@ -89,6 +90,9 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
 
     # Step 4: Retrieve the clusters
     clusters = leiden_community_detection(g, n_iterations=n_iterations)
+
+    # Delete the temporary file
+    os.remove(path)
 
     # Step 5: Split the clusters into training and test sets
     if method == 'random':
