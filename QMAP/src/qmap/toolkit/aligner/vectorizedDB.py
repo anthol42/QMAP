@@ -30,6 +30,11 @@ class VectorizedDB:
         return self.embeddings[index]
 
     def embedding_by_id(self, id: str) -> torch.Tensor:
+        """
+        Get the embedding for a specific sequence id. This method will work only if you provided ids when encoding the sequences.
+        :param id: The sequence id to get the embedding for.
+        :return: The embedding tensor for the sequence id.
+        """
         if self.ids is None:
             raise RuntimeError(f"No sequence ids '{self.ids}' found in the database.")
 
@@ -39,6 +44,11 @@ class VectorizedDB:
         return self.embeddings[index]
 
     def __getitem__(self, item: Union[str, int]) -> torch.Tensor:
+        """
+        Get the embedding for a specific item by index (if integer) or by sequence (if string).
+        :param item: The item to get the embedding for. It can be an integer index or a sequence string.
+        :return: The embedding tensor for the item.
+        """
         if isinstance(item, int):
             return self.embeddings[item]
         elif isinstance(item, str):
@@ -54,6 +64,10 @@ class VectorizedDB:
         return len(self.sequences)
 
     def __iter__(self):
+        """
+        Iterate over the sequences and their embeddings.
+        :yield: A tuple of (sequence, embedding) for each sequence in the database.
+        """
         for sequence, embedding in zip(self.sequences, self.embeddings):
             yield sequence, embedding
 

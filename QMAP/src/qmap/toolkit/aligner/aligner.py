@@ -1,7 +1,6 @@
 from .vectorizedDB import VectorizedDB
 from .multi_alignment import MultiAlignment
 from .encoder import Encoder
-import numpy as np
 from .utils import _get_device
 import torch
 from torch import nn
@@ -77,7 +76,7 @@ def align_seq2db(sequences: List[str], db: VectorizedDB, batch: int = 0, device:
 
     return align_db(seq_db, db, batch=batch, device=device, index_by=index_by)
 
-def align_seq(seq1: str, seq2: str):
+def align_seq(seq1: str, seq2: str) -> float:
     """
     Align two sequences and return the identity score.
     :param seq1: The first sequence

@@ -2,39 +2,14 @@ from .model import ESMEncoder
 from .model import ESMAlphabet
 import torch
 from torch.utils.data import DataLoader, Dataset
-from torch.nn import PReLU
-from dataclasses import dataclass
-import os
 from pathlib import Path
-from typing import List, Tuple, Sequence, Literal, Optional
+from typing import List, Tuple, Sequence, Optional
 from pyutils import progress
 from .vectorizedDB import VectorizedDB
 from .utils import _get_device
 from huggingface_hub import PyTorchModelHubMixin
 
 root = Path(__file__).parent.parent
-
-@dataclass
-class EsmEncoderConfig:
-    num_layers: int = 12
-    embed_dim: int = 480
-    attention_heads: int = 20
-    token_dropout: bool = True
-    attention_dropout: float = 0.
-    layer_dropout: float = 0.
-    head_dropout: float = 0.
-    head_dim: int = 512
-    head_depth: int = 2
-    proj_dim: int = 512
-    use_clf_token: bool = False
-    norm_embedding: bool = True
-    norm: Literal['Batch', 'Layer', 'ESM', 'none'] = 'none'
-    prenorm: bool = False
-    linbranch: bool = True
-    head_residual: bool = True,
-    learned_pooling: bool = False
-    all_layers: bool = True
-
 
 class AlignmentCollator:
     def __init__(self, alphabet: ESMAlphabet, max_len: int = 100):
@@ -126,6 +101,14 @@ class QMAPModel(
 
 
 class Encoder:
+    """
+    This class is used to encode the protein sequences into embeddings. It will return a VectorizedDB object which is
+    mainly a wrapper of a tensor of shape (N_sequences, 512) corresponding to the sequence embeddings.
+
+    Usage:
+
+    Its usage is very simple, simply initialize the class and call the encode method with a list of sequences!
+    """
     def __init__(self, force_cpu: bool = False):
         self.device = _get_device(force_cpu=force_cpu)
 
@@ -139,10 +122,11 @@ class Encoder:
 
     def encode(self, sequences: list[str], batch_size: int = 512, ids: Optional[List[str]] = None) -> VectorizedDB:
         """
-        Encode a list of sequences using the ESM model.
-        :param sequences: List of protein sequences to encode.
-        :param ids: The sequence ids. Useful when the sequences are not unique.
-        :return: Encoded tensor of shape (batch_size, sequence_length, embed_dim).
+        Encode a list of sequences using the model.
+        :param sequences: List of peptide sequences to encode. Note that the sequences should have a maximum length of 100 amino acids. Please filter out longer sequences or truncate them before encoding.
+        :param ids: The sequence ids. Useful when the sequences are not unique. If not provided, you can still find the sequence by its index as the order of the embeddings is the same as the order of the sequences.
+        :param batch_size: The batch size to use. Change this to a lower value if you run out of memory.
+        :return: Encoded tensor of shape (N_sequences, 512).
         """
         # Make dataloader
         dataloader = self._make_dataloader(sequences, self.alphabet, batch_size=batch_size)
@@ -175,7 +159,7 @@ class Encoder:
     @staticmethod
     def _make_dataloader(sequences: list[str],
                          alphabet: ESMAlphabet,
-                         batch_size: int) -> torch.utils.data.DataLoader:
+                         batch_size: int) -> DataLoader:
         """
         Create a DataLoader for the sequences.
         :param sequences: List of protein sequences to encode.
@@ -189,7 +173,7 @@ class Encoder:
             raise ValueError(f"Some sequences are too long ({max_len} > 100). ")
         sorted_sequences = sorted(sequences, key=lambda x: len(x[1]))
         collator = AlignmentCollator(alphabet=alphabet)
-        dataloader = torch.utils.data.DataLoader(
+        dataloader = DataLoader(
             SeqDataset(sorted_sequences),
             batch_size=batch_size,
             collate_fn=collator,

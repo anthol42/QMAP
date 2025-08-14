@@ -2,6 +2,11 @@ import numpy as np
 
 
 class MultiAlignment:
+    """
+    Wraps the alignment matrix of two sets of sequences. You can access the alignment matrix directly from the
+    `alignment_matrix` attribute. You can also simulate an alignment between two sequences using the `align` method.
+    this will return the precomputed alignment between the two sequences.
+    """
     def __init__(self, alignment_matrix: np.ndarray, row_sequences, col_sequences):
         """
         :param alignment_matrix: Shape(row, col)
@@ -19,7 +24,9 @@ class MultiAlignment:
 
     def align(self, seq1: str, seq2: str) -> str:
         """
-        Align two sequences based on the alignment matrix.
+        Align two sequences based on the alignment matrix. The parameters can be the sequences itself or the sequence id
+        depending on how the class was initialized. Using the default align functions, you can choose whether to index
+        by index or sequence with the `index_by` parameter.
         :param seq1: The first sequence to align.
         :param seq2: The second sequence to align.
         :return: The aligned sequence.
