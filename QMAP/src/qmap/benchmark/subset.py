@@ -5,6 +5,9 @@ from .QMAP_metrics import QMAPMetrics, r2_score
 from scipy.stats import spearmanr, kendalltau, pearsonr
 
 class BenchmarkSubset(Dataset):
+    """
+    Base class of the QMAP benchmark class. It provides a common interface for the benchmark dataset and the subsets.
+    """
     def __init__(self, split: int, threshold: Literal[55, 60], sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
                      n_termini: List[str], unusual_aa: List[dict[int, str]], max_targets: List[float], min_targets: List[float],
                      *,
@@ -52,9 +55,15 @@ class BenchmarkSubset(Dataset):
 
     @property
     def targets(self) -> np.ndarray:
+        """
+        Return a numpy array of the targets. Its shape will be (N_samples, N_species) if specie_as_input is False or (N_samples,) otherwise.
+        """
         return np.array(self._targets)
 
     def __len__(self):
+        """
+        Return the number of samples in the dataset.
+        """
         return len(self.sequences)
 
     def __getitem__(self, idx) -> Tuple:
@@ -86,7 +95,7 @@ class BenchmarkSubset(Dataset):
     def accuracy(self, predictions: np.ndarray) -> float:
         """
         Compute the accuracy of the predictions. A good prediction is one that is within the MIC range if a range is
-        provided. This method only work with MIC datasets.
+        provided. This method only work with MIC datasets (It does not work with Hemolytic or Cytotoxic datasets).
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
         :return: The accuracy of the predictions.
         """
@@ -101,10 +110,22 @@ class BenchmarkSubset(Dataset):
 
     def compute_metrics(self, predictions: np.ndarray, log: bool = True) -> QMAPMetrics:
         """
-        Compute the QMAP metrics for the predictions.
+        Compute the QMAP metrics given the predictions of the model. The metrics computed are:
+        - RMSE
+        - MSE
+        - MAE
+        - R2
+        - Spearman correlation
+        - Kendall's tau
+        - Pearson correlation
+
+        Note:
+
+            This does not include the accuracy metric, which is computed separately.
+
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
         :param log: If true, apply a log10 on the targets.
-        :return: The metrics for the predictions.
+        :return: A QMAPMetrics object containing all the metrics.
         """
         if predictions.ndim == 1:
             predictions = predictions[:, None]

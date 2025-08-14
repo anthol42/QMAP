@@ -35,6 +35,9 @@ class QMAPMetrics:
                f'|-------|-----------|------|-----|-----|----|----------|----------------|---------|\n'
 
     def dict(self):
+        """
+        Return a dictionary containing the metrics values.
+        """
         return dict(split=self.split,threshold=self.threshold,rmse=self.rmse,mse=self.mse,mae=self.mae,
                     r2=self.r2,spearman=self.spearman,kendalls_tau=self.kendalls_tau,pearson=self.pearson)
     def __repr__(self):
