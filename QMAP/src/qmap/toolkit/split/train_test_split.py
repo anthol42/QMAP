@@ -12,7 +12,7 @@ from .maximize_diversity_split import maximize_diversity_split
 from .filtering import filter_out
 
 def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Union[float, int] = 0.2,
-                     threshold: float = 0.55,
+                     threshold: float = 0.60,
                      method: Literal['max', 'prob', 'random'] = 'random',
                      temperature: float = 1.0,
                      train_size: Optional[Union[float, int]] = None,
@@ -51,7 +51,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     :param post_filtering: If true, sequences in the training set that have a similarity higher than the threshold to any sequence in the test set will be removed.
     :param encoder_batch: The batch size of the encoder.
     :param batch_size: If you get an out of memory error, you can reduce the batch size to a smaller value. If set to 0, the batch size will be set to the full dataset size.
-    :param n_iterations: The number of iterations to run the Leiden community detection algorithm. If set to -1, it will run until convergence.
+    :param n_iterations: The number of iterations to run the Leiden community detection algorithm. If set to -1, it will run until convergence. It is recommended to change this parameter if it takes a long time to converge and a rough estimate of the communities is sufficient.
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
     # Step 1: Validate inputs
