@@ -141,6 +141,9 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
 
     split_metadata = []
     for i in range(len(metadata)):
-        split_metadata.extend([train_metadata[i], test_metadata[i]])
+        if type(metadata[i]) == np.ndarray:
+            split_metadata.extend([np.array(train_metadata[i]), np.array(test_metadata[i])])
+        else:
+            split_metadata.extend([train_metadata[i], test_metadata[i]])
 
     return train_sequences, test_sequences, *split_metadata
