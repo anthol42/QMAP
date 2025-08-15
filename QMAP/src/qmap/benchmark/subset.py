@@ -1,15 +1,18 @@
 from torch.utils.data import Dataset
-from typing import List, Tuple, Optional, Literal
+from typing import List, Tuple, Optional, Literal, Union
 import numpy as np
-from .QMAP_metrics import QMAPMetrics, r2_score
+from .QMAP_metrics import QMAPRegressionMetrics, QMAPClassificationMetrics
 from scipy.stats import spearmanr, kendalltau, pearsonr
+from .metrics import balanced_accuracy, precision, recall, f1_score, mcc_score, r2_score
 
 class BenchmarkSubset(Dataset):
     """
     Base class of the QMAP benchmark class. It provides a common interface for the benchmark dataset and the subsets.
     """
-    def __init__(self, split: int, threshold: Literal[55, 60], sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
-                     n_termini: List[str], unusual_aa: List[dict[int, str]], max_targets: List[float], min_targets: List[float],
+    def __init__(self, split: int, threshold: Literal[55, 60], dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'],
+                     sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
+                     n_termini: List[str], unusual_aa: List[dict[int, str]], max_targets: List[float],
+                     min_targets: List[float],
                      *,
                      modified_termini: bool = False,
                      allow_unusual_aa: bool = False,
@@ -17,6 +20,7 @@ class BenchmarkSubset(Dataset):
                  ):
         self.split = split
         self.threshold = threshold / 100
+        self.dataset_type = dataset_type
 
         self.modified_termini = modified_termini
         self.allow_unusual_aa = allow_unusual_aa
@@ -108,7 +112,71 @@ class BenchmarkSubset(Dataset):
         good = good[~np.logical_or(np.isnan(mins), np.isnan(maxs))[mins != maxs]]
         return np.sum(good) / len(good)
 
-    def compute_metrics(self, predictions: np.ndarray, log: bool = True) -> QMAPMetrics:
+    def compute_metrics(self, predictions: np.ndarray, log: bool = True) -> Union[QMAPRegressionMetrics, QMAPClassificationMetrics]:
+        """
+        Compute the QMAP metrics given the predictions of the model. If the dataset type is MIC, it will return the
+        following metrics:
+        - RMSE
+        - MSE
+        - MAE
+        - R2
+        - Spearman correlation
+        - Kendall's tau
+        - Pearson correlation
+
+        If the dataset type is Hemolytic or Cytotoxic, it will return the following metrics:
+        - Balanced accuracy
+        - Precision
+        - Recall
+        - F1 score
+        - Matthews correlation coefficient [MCC]
+
+        Note:
+
+            This does not include the accuracy metric, which is computed separately.
+
+        :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
+        :param log: If true, apply a log10 on the targets.
+        :return: A QMAPMetrics object containing all the metrics.
+        """
+        if self.dataset_type == "MIC":
+            return self._regression_metrics(predictions, log=log)
+        else:
+            return self._classification_metrics(predictions)
+
+    def _classification_metrics(self, predictions: np.ndarray) -> QMAPClassificationMetrics:
+        """
+        Compute the QMAP metrics given the predictions of the model. The metrics computed are:
+        - Balanced accuracy
+        - Precision
+        - Recall
+        - F1 score
+        - Matthews correlation coefficient [MCC]
+
+        :param predictions: The predictions can be a probability array (0-1) or a binary array {0, 1}. It should have the same length and order as this dataset. If float values are provided, they will be thresholded at 0.5.
+        :return: A QMAPClassificationMetrics object containing all the metrics.
+        """
+        if len(predictions.shape) > 2:
+            raise ValueError("Predictions should be an array of shape (N_samples, ) or (N_samples, 1)")
+
+        if len(predictions.shape) == 2 and predictions.shape[1] > 1:
+            raise ValueError("If 2D, the predictions should be of shape (N_samples, 1) for binary classification.")
+        else:
+            predictions = predictions.reshape(-1)
+
+        if predictions.dtype == np.float16 or predictions.dtype == np.float32 or predictions.dtype == np.float64:
+            predictions = (predictions > 0.5).astype(int)
+
+        targets = self.targets.reshape(-1)
+
+        return QMAPClassificationMetrics(split=self.split, threshold=int(100 * self.threshold),
+                           balanced_accuracy=balanced_accuracy(targets, predictions),
+                           precision=precision(targets, predictions),
+                           recall=recall(targets, predictions),
+                           f1=f1_score(targets, predictions),
+                           mcc=mcc_score(targets, predictions))
+
+    def _regression_metrics(self, predictions: np.ndarray, log: bool = True) -> QMAPRegressionMetrics:
         """
         Compute the QMAP metrics given the predictions of the model. The metrics computed are:
         - RMSE
@@ -125,7 +193,7 @@ class BenchmarkSubset(Dataset):
 
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
         :param log: If true, apply a log10 on the targets.
-        :return: A QMAPMetrics object containing all the metrics.
+        :return: A QMAPRegressionMetrics object containing all the metrics.
         """
         if predictions.ndim == 1:
             predictions = predictions[:, None]
@@ -149,7 +217,7 @@ class BenchmarkSubset(Dataset):
             pearson += pearsonr(targets[:, col], predictions[:, col]).statistic
 
         n = predictions.shape[1]
-        return QMAPMetrics(split=self.split, threshold=int(100 * self.threshold),
+        return QMAPRegressionMetrics(split=self.split, threshold=int(100 * self.threshold),
                            rmse=rmse / n,
                            mse=mse / n,
                            mae=mae / n,
@@ -157,5 +225,4 @@ class BenchmarkSubset(Dataset):
                            spearman=spearman / n,
                            kendalls_tau=kendalls_tau / n,
                            pearson=pearson / n)
-
 
