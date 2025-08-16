@@ -131,9 +131,9 @@ class BenchmarkSubset(Dataset):
         - F1 score
         - Matthews correlation coefficient [MCC]
 
-        Note:
+        **Note**:
 
-            This does not include the accuracy metric, which is computed separately.
+        This does not include the accuracy metric, which is computed separately.
 
         :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
         :param log: If true, apply a log10 on the targets.

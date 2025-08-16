@@ -3,7 +3,7 @@ import pandas as pd
 from qmap.toolkit import aligner
 from qmap.toolkit.clustering import build_graph, leiden_community_detection
 from qmap.toolkit import split
-from qmap.toolkit.utils.esm_emb import generate_esm2_embeddings
+from generate_esm_embeddings import generate_esm2_embeddings
 import pickle
 import igraph as ig
 import matplotlib.pyplot as plt
@@ -53,13 +53,13 @@ if __name__ == "__main__":
     for annot_method in ["random", "prob", "max"]:
         results.append([])
         for split_met in ["prob", "random", "max"]:
-            train_sequences, test_sequences, neg, pos = split.train_test_split(sequences, embeddings, test_size=0.45, method=annot_method)
+            train_sequences, test_sequences, neg, pos = split.train_test_split(sequences, embeddings, test_size=0.45, method=annot_method, threshold=0.6)
             all_sequences = train_sequences + test_sequences
             X = np.concatenate((neg, pos), axis=0)
             y = np.array([0] * len(neg) + [1] * len(pos))
 
             # Split dataset into training and test sets
-            seq_train, seq_test, X_train, X_test, y_train, y_test = split.train_test_split(all_sequences, X, y, test_size=0.2, random_state=42, shuffle=True, method=split_met)
+            seq_train, seq_test, X_train, X_test, y_train, y_test = split.train_test_split(all_sequences, X, y, test_size=0.2, shuffle=True, method=split_met, threshold=0.6)
             classifier = LogisticRegression(max_iter=10000)
             classifier.fit(X_train, y_train)
             y_pred = classifier.predict(X_test)

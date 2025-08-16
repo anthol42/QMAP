@@ -31,7 +31,8 @@ class QMAPBenchmark(BenchmarkSubset):
     subset of your training dataset where the mask is True and evaluate it on the benchmark dataset. Do this for all
     splits. See the example section for more details.
 
-    Thresholds:\
+    Thresholds:
+
     - 55: This threshold enables a split that is considered natural as it have a maximum identity distribution between
     the train and test set similar to natural independent peptide datasets.
 
