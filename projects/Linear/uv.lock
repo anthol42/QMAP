@@ -515,6 +515,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "safetensors" },
+    { name = "scipy" },
     { name = "torch" },
 ]
 
@@ -527,6 +528,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.22" },
     { name = "pandas", specifier = ">=1.4" },
     { name = "safetensors", specifier = ">=0.5.3" },
+    { name = "scipy", specifier = ">=1.10.1" },
     { name = "torch", specifier = ">=2.2" },
 ]
 
