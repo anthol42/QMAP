@@ -206,6 +206,9 @@ class QMAPBenchmark(BenchmarkSubset):
         Return a subset of the benchmark with only high efficiency sequences. A high efficiency sequence is defined as
         a sample that have a MIC under 10µM.
         """
+        if self.dataset_type != "MIC":
+            raise AttributeError("high_efficiency attribute is only available for MIC datasets")
+
         mask = self.targets < 10
 
         return BenchmarkSubset(
