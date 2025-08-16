@@ -1,22 +1,15 @@
 import pandas as pd
 import numpy as np
-from tensorflow.keras import layers, callbacks
 import tensorflow as tf
-import keras
 from tensorflow.keras.models import Sequential,Model
 from keras.layers import *
-from keras import backend as K
 from tensorflow.keras.optimizers import Adam
-from sklearn import metrics
-from sklearn.metrics import accuracy_score, cohen_kappa_score, roc_auc_score, matthews_corrcoef, average_precision_score,confusion_matrix
-from sklearn.metrics import classification_report
-from sklearn import model_selection, metrics
-from sklearn.model_selection import train_test_split,StratifiedKFold,KFold
 import json
 from qmap.benchmark import QMAPBenchmark
 from qmap.toolkit.split import train_test_split
 import math
 import os
+from pyutils import Colors
 
 tf.random.set_seed(0)
 np.random.seed(0)
@@ -63,9 +56,15 @@ def get_model():
 if not os.path.exists('.cache'):
     os.makedirs('.cache')
 
+all_results = []
+all_results_high_complexity = []
+all_results_low_complexity = []
 for split in range(5):
     for threshold in [55, 60]:
-        benchmark = QMAPBenchmark(split, threshold, dataset_type='Hemolytic')
+        benchmark = QMAPBenchmark(split, threshold,
+                                  dataset_type='Hemolytic',
+                                  forbidden_aa=['X', ' ']
+                                  )
         y = [sample['Hemolitic Activity'] for sample in dataset]
         X = np.stack([encode_seq(sample['Sequence']) for sample, target in zip(dataset, y) if not math.isnan(target)])
         X_sequences = [sample['Sequence'] for sample, target in zip(dataset, y) if not math.isnan(target)]
@@ -86,3 +85,33 @@ for split in range(5):
         history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_val, y_val),
                              callbacks=[callback], shuffle=True)
 
+        test = np.array([encode_seq(seq) for seq in benchmark.inputs])
+        preds = model.predict(test)
+        results = benchmark.compute_metrics(preds)
+        print(Colors.green, results, Colors.reset)
+        all_results.append(results)
+
+        high_comp_benchmark = benchmark.high_complexity
+        preds = model.predict(np.array([encode_seq(seq) for seq in high_comp_benchmark.inputs]))
+        all_results_high_complexity.append(high_comp_benchmark.compute_metrics(preds))
+
+        low_comp_benchmark = benchmark.low_complexity
+        preds = model.predict(np.array([encode_seq(seq) for seq in low_comp_benchmark.inputs]))
+        all_results_low_complexity.append(low_comp_benchmark.compute_metrics(preds))
+
+
+
+all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
+high_complexity = pd.DataFrame([result.dict() for result in all_results_high_complexity])
+low_complexity = pd.DataFrame([result.dict() for result in all_results_low_complexity])
+
+# Export to pandas
+if not os.path.exists('results'):
+    os.makedirs('results')
+all_result_table.to_csv('results/full.csv')
+high_complexity.to_csv('results/high_complexity.csv')
+low_complexity.to_csv('results/low_complexity.csv')
+
+print(all_results[0].md_col, end="")
+for results in all_results:
+    print(results.md_row, end="")
