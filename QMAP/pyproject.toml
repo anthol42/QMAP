@@ -1,7 +1,7 @@
 [project]
-name = "qmap"
+name = "QMAP-Benchmark"
 version = "0.0.0"
-description = "Toolkit to split protein sequences databases into distinct clusters based on pseudo identity"
+description = "Benchmark for AMP MIC regression and toxicity prediction with a Toolkit to split peptide sequences datasets into independent sets based on pseudo identity"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
