@@ -52,9 +52,17 @@ class QMAPBenchmark(BenchmarkSubset):
                  specie_as_input: bool = False,
                  species_subset: Optional[List[str]] = None,
                  dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'] = 'MIC',
+                 include_hemo_in_mask: bool = False,
+                 include_cyto_in_mask: bool = False,
                  show_all: bool = False,
                  ):
         """
+        If you want to use the benchmark for a model that predicts the MIC AND cytotoxicity or hemolytic activity, you
+        can turn `include_hemo_in_mask` or `include_cyto_in_mask` to True. This will include the sequences that are only
+        hemolytic or cytotoxic in the test set from which the train mask is computed. This way, you will be able to
+        accurately test the performances for Hemolytic or Cytotoxic predictions without having to train the model again.
+        For this to be effective, you must set the `dataset_type` to 'MIC' to get the accurate train mask.
+
         :param modified_termini: If True, the dataset will return the N and C terminus smiles string. Otherwise, sequences containing modified termini will be skipped.
         :param unusual_aa: If True, the dataset will return the unusual amino acids as a dictionary of positions and their. Otherwise, sequences containing unusual amino acids will be skipped.
         :param d_amino_acids: If True, the dataset will return sequences with D-amino acids. Otherwise, sequences containing D-amino acids will be skipped.
@@ -62,6 +70,8 @@ class QMAPBenchmark(BenchmarkSubset):
         :param specie_as_input: If True, the dataset will return a tuple of (sequence, specie) and the target will be a scalar. Otherwise, all species in species_subset will be returned as a single tensor as target.
         :param species_subset: The species to include in the dataset as targets. If None, all species will be included.
         :param dataset_type: The type of dataset to use. If you want to measure the MIC prediction, use 'MIC'. If you want to accuracy at predicting whether a peptide is hemolytic or cytotoxic, use 'Hemolytic' or 'Cytotoxic' respectively.
+        :param include_hemo_in_mask: Even if the dataset type is 'MIC', if True, the sequences having only an hemolytic activity will be included in the test set from which the train mask is computed.
+        :param include_cyto_in_mask: Even if the dataset type is 'MIC', if True, the sequences having only a cytotoxic activity will be included in the test set from which the train mask is computed.
         :param show_all: If true, even if the modified_termini, unusual amino acids or D-amino acids are not used, the dataset will still return the sequences. Otherwise, it will skip those sequences.
         """
         if split not in [0, 1, 2, 3, 4]:
@@ -84,12 +94,17 @@ class QMAPBenchmark(BenchmarkSubset):
         self.specie_as_input = specie_as_input
         self.species_subset = species_subset if species_subset is not None else []
         self.dataset_type = dataset_type
+        self.include_hemo_in_mask = include_hemo_in_mask
+        self.include_cyto_in_mask = include_cyto_in_mask
         self.show_all = show_all
 
         if self.dataset_type not in ['MIC', 'Hemolytic', 'Cytotoxic']:
             raise ValueError("dataset_type must be one of 'MIC', 'Hemolytic', or 'Cytotoxic'.")
 
         # Initialize data containers
+        # All sequences will be the same as sequences if include_hemo_in_mask and include_cyto_in_mask are False.
+        # Otherwise, it will also contain sequences that are only hemolytic or cytotoxic.
+        self.all_sequences = []
         self.sequences, self.species, self._targets = [], [], []
         self.c_termini, self.n_termini, self.unusual_aa = [], [], []
         self.max_targets, self.min_targets = [], []
@@ -98,10 +113,12 @@ class QMAPBenchmark(BenchmarkSubset):
         # Process samples
         for sample in self.raw_dataset:
             if self.dataset_type == 'MIC':
+                added = False
                 if self.specie_as_input:
                     # Add one entry per species
                     for specie, (consensus, minMIC, maxMIC) in sample.targets.items():
                         if specie in self.species_subset:
+                            added = True
                             self._add_sample_data(sample, specie, consensus, minMIC, maxMIC)
                 else:
                     # Create multi-target array for all species
@@ -117,9 +134,17 @@ class QMAPBenchmark(BenchmarkSubset):
 
                     label_array = np.array(list(label.values()))
                     if not np.isnan(label_array).all():
+                        added = True
                         self._add_sample_data(sample, None, label_array,
                                         np.array(list(label_min.values())),
                                         np.array(list(label_max.values())))
+                if not added and include_hemo_in_mask:
+                    if not np.isnan(sample.hemolytic):
+                        # Add hemolytic activity as a target
+                        self.all_sequences.append(sample.sequence)
+                if not added and include_hemo_in_mask:
+                    if not np.isnan(sample.hemolytic):
+                        self.all_sequences.append(sample.hemolytic)
             else:
                 # Handle Hemolytic/Cytotoxic
                 target_value = getattr(sample, self.dataset_type.lower(), np.nan)
@@ -282,6 +307,7 @@ class QMAPBenchmark(BenchmarkSubset):
 
     def _add_sample_data(self, sample, specie=None, target=None, min_mic=None, max_mic=None):
         """Helper to add sample data to containers."""
+        self.all_sequences.append(sample.sequence)
         self.sequences.append(sample.sequence)
         self.species.append(specie or self.dataset_type)
         self._targets.append(target)
