@@ -102,9 +102,14 @@ class QMAPBenchmark(BenchmarkSubset):
             raise ValueError("dataset_type must be one of 'MIC', 'Hemolytic', or 'Cytotoxic'.")
 
         # Initialize data containers
-        # All sequences will be the same as sequences if include_hemo_in_mask and include_cyto_in_mask are False.
-        # Otherwise, it will also contain sequences that are only hemolytic or cytotoxic.
-        self.all_sequences = []
+        # ncs_mask is a mask for non-contributing sequences. These are sequences that should not be returned by the
+        # current dataset, but training sequences must not be close because we will eventually evaluate on these
+        # sequences. An example for this is when a model can predict MIC and hemolytic activity. We will create a MIC
+        # dataset and derive the training dataset from it using the `get_train_mask` method. However, we want to
+        # include sequences that only have an hemolytic activity because we would like to evaluate it using an
+        # Hemolytic dataset without having to train the model again. This is why we can include ncs (sequences that do
+        # not have MIC activity, but a hemolytic activity)
+        self.ncs_mask = []
         self.sequences, self.species, self._targets = [], [], []
         self.c_termini, self.n_termini, self.unusual_aa = [], [], []
         self.max_targets, self.min_targets = [], []
@@ -141,10 +146,11 @@ class QMAPBenchmark(BenchmarkSubset):
                 if not added and include_hemo_in_mask:
                     if not np.isnan(sample.hemolytic):
                         # Add hemolytic activity as a target
-                        self.all_sequences.append(sample.sequence)
-                if not added and include_hemo_in_mask:
-                    if not np.isnan(sample.hemolytic):
-                        self.all_sequences.append(sample.hemolytic)
+                        added = True
+                        self._add_sample_data(sample, None, None, ncs=True)
+                if not added and include_cyto_in_mask:
+                    if not np.isnan(sample.cytotoxic):
+                        self._add_sample_data(sample, None, None, ncs=True)
             else:
                 # Handle Hemolytic/Cytotoxic
                 target_value = getattr(sample, self.dataset_type.lower(), np.nan)
@@ -166,6 +172,8 @@ class QMAPBenchmark(BenchmarkSubset):
         # Remove samples that have modification that are not specified
         if not self.show_all:
             self._filter_dataset()
+        else:
+            self.all_sequences = self.sequences
 
 
     @property
@@ -275,7 +283,7 @@ class QMAPBenchmark(BenchmarkSubset):
         """
         # Step 1: Encode the sequences
         encoder = Encoder(force_cpu=force_cpu)
-        bench_db = encoder.encode(self.sequences)
+        bench_db = encoder.encode(self.all_sequences)
         ds_db = encoder.encode(sequences, batch_size=encoder_batch_size)
 
         # Step 2: Align the databases
@@ -296,6 +304,9 @@ class QMAPBenchmark(BenchmarkSubset):
             if any(aa in self.forbidden_aa for aa in self.sequences[i]):
                 mask[i] = False
 
+        self.all_sequences = [seq for i, seq in enumerate(self.sequences) if mask[i]]
+
+        mask = [keep and not ncs for keep, ncs in zip(mask, self.ncs_mask)]
         self.sequences = [seq for i, seq in enumerate(self.sequences) if mask[i]]
         self.species = [spec for i, spec in enumerate(self.species) if mask[i]] if self.species is not None else None
         self._targets = [tgt for i, tgt in enumerate(self._targets) if mask[i]]
@@ -305,9 +316,9 @@ class QMAPBenchmark(BenchmarkSubset):
         self.max_targets = [mt for i, mt in enumerate(self.max_targets) if mask[i]] if self.max_targets is not None else None
         self.min_targets = [mt for i, mt in enumerate(self.min_targets) if mask[i]] if self.min_targets is not None else None
 
-    def _add_sample_data(self, sample, specie=None, target=None, min_mic=None, max_mic=None):
+    def _add_sample_data(self, sample, specie=None, target=None, min_mic=None, max_mic=None, ncs: bool = False):
         """Helper to add sample data to containers."""
-        self.all_sequences.append(sample.sequence)
+        self.ncs_mask.append(ncs)
         self.sequences.append(sample.sequence)
         self.species.append(specie or self.dataset_type)
         self._targets.append(target)
