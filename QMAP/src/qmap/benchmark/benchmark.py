@@ -330,7 +330,7 @@ class QMAPBenchmark(BenchmarkSubset):
             self.max_targets.append(max_mic)
 
     @staticmethod
-    def _load_dataset(path: str):
+    def _load_dataset(path: str) -> List[Sample]:
         with open(path, "r") as f:
             data = json.load(f)
 
