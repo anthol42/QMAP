@@ -1,9 +1,9 @@
-
+from typing import Optional, Union
 
 class Sample:
-    def __init__(self, id_: int, sequence: str, n_terminus: str, n_terminus_name: str, c_terminus: str,
-                 c_terminus_name: str, unusual_aa: dict[int, str], unusual_aa_names: dict[int, str],
-                 targets: dict[str, tuple[float, float, float]], hemolytic: bool, cytotoxic: bool):
+    def __init__(self, id_: int, sequence: str, n_terminus: Optional[str], n_terminus_name: Optional[str], c_terminus: Optional[str],
+                 c_terminus_name: Optional[str], unusual_aa: dict[int, str], unusual_aa_names: dict[int, str],
+                 targets: dict[str, tuple[float, float, float]], hemolytic: Union[bool, float('nan')], cytotoxic:  Union[bool, float('nan')]):
         self.ID = id_
         self.sequence = sequence
         self.n_terminus = n_terminus
