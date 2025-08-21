@@ -21,7 +21,8 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
                      post_filtering: bool = False,
                      encoder_batch: int = 512,
                      batch_size: int = 0,
-                     n_iterations: int = -1) -> tuple:
+                     n_iterations: int = -1,
+                     force_cpu: bool = True) -> tuple:
     """
     Splits the sequences into training and test sets based on a given test or train size. It will split the data
     along the clusters, reducing the risk that similar sequences are in both sets. The clusters are defined as sequences
@@ -52,6 +53,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     :param encoder_batch: The batch size of the encoder.
     :param batch_size: If you get an out of memory error, you can reduce the batch size to a smaller value. If set to 0, the batch size will be set to the full dataset size.
     :param n_iterations: The number of iterations to run the Leiden community detection algorithm. If set to -1, it will run until convergence. It is recommended to change this parameter if it takes a long time to converge and a rough estimate of the communities is sufficient.
+    :param force_cpu: If true, it will split the sequences on the CPU. This is useful if you are running out of memory on the GPU.
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
     # Step 1: Validate inputs
@@ -81,7 +83,7 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
         raise ValueError("Temperature must be a positive number or infinity.")
 
     # Step 2: Encode the sequences
-    encoder = aligner.Encoder(force_cpu=True)
+    encoder = aligner.Encoder(force_cpu=force_cpu)
     db = encoder.encode(sequences, batch_size=encoder_batch)
 
     # Step 3: Build the graph
@@ -135,7 +137,8 @@ def train_test_split(sequences: List[str], *metadata: List[Any], test_size: Unio
     if post_filtering:
         train = filter_out(train_sequences, *train_metadata,
                                                  ref_sequences=test_sequences, threshold=threshold,
-                                                 encoder_batch_size=encoder_batch, aligner_batch_size=batch_size)
+                                                 encoder_batch_size=encoder_batch, aligner_batch_size=batch_size,
+                                                 force_cpu=force_cpu)
         train_sequences = train[0]
         train_metadata = train[1:]
 
