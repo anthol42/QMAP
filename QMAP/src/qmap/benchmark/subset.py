@@ -10,8 +10,8 @@ class BenchmarkSubset(Dataset):
     Base class of the QMAP benchmark class. It provides a common interface for the benchmark dataset and the subsets.
     """
     def __init__(self, split: int, threshold: Literal[55, 60], dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'],
-                     sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[str],
-                     n_termini: List[str], unusual_aa: List[dict[int, str]], max_targets: List[float],
+                     sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[Optional[str]],
+                     n_termini: List[Optional[str]], unusual_aa: List[dict[int, str]], max_targets: List[float],
                      min_targets: List[float],
                      *,
                      modified_termini: bool = False,
