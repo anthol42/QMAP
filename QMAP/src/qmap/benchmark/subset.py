@@ -209,13 +209,14 @@ class BenchmarkSubset(Dataset):
         kendalls_tau = 0
         pearson = 0
         for col in range(predictions.shape[1]):
-            mse += np.mean((targets[:, col] - predictions[:, col]) ** 2)
-            mae += np.mean(np.abs(targets[:, col] - predictions[:, col]))
+            mask = ~np.isnan(targets[:, col])
+            mse += np.mean((targets[:, col][mask] - predictions[:, col][mask]) ** 2)
+            mae += np.mean(np.abs(targets[:, col][mask] - predictions[:, col][mask]))
             rmse += np.sqrt(mse)
-            r2 += r2_score(targets[:, col], predictions[:, col])
-            spearman += spearmanr(targets[:, col], predictions[:, col]).statistic
-            kendalls_tau += kendalltau(targets[:, col], predictions[:, col]).statistic
-            pearson += pearsonr(targets[:, col], predictions[:, col]).statistic
+            r2 += r2_score(targets[:, col][mask], predictions[:, col][mask])
+            spearman += spearmanr(targets[:, col][mask], predictions[:, col][mask]).statistic
+            kendalls_tau += kendalltau(targets[:, col][mask], predictions[:, col][mask]).statistic
+            pearson += pearsonr(targets[:, col][mask], predictions[:, col][mask]).statistic
 
         n = predictions.shape[1]
         return QMAPRegressionMetrics(split=self.split, threshold=int(100 * self.threshold),

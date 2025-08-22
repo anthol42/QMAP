@@ -245,7 +245,10 @@ class QMAPBenchmark(BenchmarkSubset):
         if self.dataset_type != "MIC":
             raise AttributeError("high_efficiency attribute is only available for MIC datasets")
 
-        mask = self.targets < 10
+        if len(self.targets.shape) == 1:
+            mask = self.targets < 10
+        else:
+            mask = (self.targets < 10).any(axis=1)
 
         return BenchmarkSubset(
             split=self.split,
@@ -328,7 +331,7 @@ class QMAPBenchmark(BenchmarkSubset):
         self.c_termini.append(sample.c_terminus)
         self.n_termini.append(sample.n_terminus)
         self.unusual_aa.append(sample.unusual_aa)
-        if min_mic is not None:
+        if min_mic is not None or ncs: # If non contributing sequence, we add None, and it will be filtered out
             self.min_targets.append(min_mic)
             self.max_targets.append(max_mic)
 
