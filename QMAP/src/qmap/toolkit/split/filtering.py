@@ -34,6 +34,6 @@ def filter_out(train_sequences: List[str], *metadata: List[Any], ref_sequences: 
     filtered_metadata = [[item for i, item in enumerate(meta) if not should_remove[i]] for meta in metadata]
 
     if len(metadata) == 0:
-        return filtered_train_sequences
+        return filtered_train_sequences,
     else:
         return filtered_train_sequences, *filtered_metadata
