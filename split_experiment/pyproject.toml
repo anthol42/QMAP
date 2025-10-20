@@ -8,16 +8,18 @@ dependencies = [
     "antho-utils>=0.1.0",
     "biopython>=1.85",
     "igraph>=0.11.9",
+    "imageio>=2.37.0",
     "leidenalg>=0.10.2",
     "matplotlib>=3.10.3",
     "notebook>=7.4.3",
     "numpy>=2.3.0",
     "pandas>=2.3.0",
-    "qmap",
+    "powerlaw>=1.5",
+    "qmap-benchmark",
     "scikit-learn>=1.7.1",
     "tqdm>=4.67.1",
     "transformers>=4.55.0",
 ]
 
 [tool.uv.sources]
-qmap = { path = "../QMAP", editable = true }
+qmap-benchmark = { path = "../QMAP" }
