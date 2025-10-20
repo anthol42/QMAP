@@ -1868,9 +1868,9 @@ wheels = [
 ]
 
 [[package]]
-name = "qmap"
+name = "qmap-benchmark"
 version = "0.0.0"
-source = { editable = "../QMAP" }
+source = { directory = "../QMAP" }
 dependencies = [
     { name = "antho-utils" },
     { name = "huggingface-hub" },
@@ -1879,6 +1879,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "safetensors" },
+    { name = "scipy" },
     { name = "torch" },
 ]
 
@@ -1888,15 +1889,16 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.34.3" },
     { name = "igraph", specifier = ">=0.11.9" },
     { name = "leidenalg", specifier = ">=0.10.2" },
-    { name = "numpy", specifier = ">=2.0" },
-    { name = "pandas", specifier = ">=2.3.1" },
+    { name = "numpy", specifier = ">=1.22" },
+    { name = "pandas", specifier = ">=1.4" },
     { name = "safetensors", specifier = ">=0.5.3" },
-    { name = "torch", specifier = ">=2.7.1" },
+    { name = "scipy", specifier = ">=1.10.1" },
+    { name = "torch", specifier = ">=2.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "matplotlib", specifier = ">=3.9" },
+    { name = "matplotlib", specifier = ">=3.8" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "setuptools", specifier = ">=80.9.0" },
@@ -2183,7 +2185,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pillow" },
     { name = "pyyaml" },
-    { name = "qmap" },
+    { name = "qmap-benchmark" },
     { name = "safetensors" },
     { name = "scipy" },
     { name = "torch" },
@@ -2207,7 +2209,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "pillow", specifier = ">=11.2.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "qmap", editable = "../QMAP" },
+    { name = "qmap-benchmark", directory = "../QMAP" },
     { name = "safetensors", specifier = ">=0.5.3" },
     { name = "scipy", specifier = ">=1.15.3" },
     { name = "torch", specifier = ">=2.7.1" },

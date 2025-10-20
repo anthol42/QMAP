@@ -161,6 +161,7 @@ def experiment1(args, kwargs, config: Optional[ConfigFile] = None, trial: Option
             diversity=config["training"]["diversity"],
             var=config["training"]["var"],
             orthogonality=config["training"]["orthogonality"],
+            activation_type=config["training"]["activation_type"],
         )
         loss.to(device)
     optimizer = make_optimizer(model.parameters(),
