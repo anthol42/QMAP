@@ -41,7 +41,7 @@ class TargetBase:
                 .replace('<','')
             if activity_string == '-':    # missing value
                 return float('nan'), float('nan')
-            return float(activity_string.split('-')[0]), float(activity_string.split('-')[1])
+            return (float(activity_string.split('-')[0]), float(activity_string.split('-')[1]))  if activity_string.split('-')[0] else (float('nan'), float('nan'))
         elif '>=' in activity_string or '≥' in activity_string:
             activity_string = re.sub(r'±.*', '', activity_string.replace('>=', '').replace('≥', ''))
             return float(activity_string), float('inf')

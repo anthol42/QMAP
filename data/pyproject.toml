@@ -5,9 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "notebook>=7.4.7",
     "python-dotenv>=1.1.1",
     "pyyaml>=6.0.2",
-    "qmap",
+    "qmap-benchmark",
     "rdkit>=2025.3.3",
     "requests>=2.32.4",
     "tqdm>=4.67.1",
@@ -15,3 +16,9 @@ dependencies = [
 
 [tool.uv.sources]
 qmap = { path = "../QMAP", editable = true }
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.6",
+    "scikit-learn>=1.7.2",
+]
