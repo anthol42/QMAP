@@ -28,7 +28,7 @@ class Criterion(nn.Module):
 
     def forward(self, pred1, pred2, target):
         pred = (pred1.unsqueeze(1) @ pred2.unsqueeze(2)).squeeze(-1)
-        # Normalize between 0 and 1 (Soft with PReLU) Because it is included in weight decay, it will converge to a relu
+        # Normalize between 0 and 1 (Soft with PReLU)
         pred = self.activation(pred)
         loss = self.criterion(pred, target)
         embs = torch.cat([pred1, pred2], dim=0)
