@@ -146,7 +146,7 @@ def make_dataset():
         sequences = read_fasta(file)
         all_sequences.update(sequences.values())
 
-    # Filter sequences such that they are smaller than 50 amino acids
+    # Filter sequences such that they are smaller than 100 amino acids
     all_sequences = {seq for seq in all_sequences if len(seq) <= 100}
 
     # Write to a new fasta file
@@ -166,7 +166,7 @@ def make_dataset():
         complexity = sequence_entropy(seq)
         if complexity > 3.9:
             all_sequences.add(seq)
-        if i > 500_000:  # 1_750_000
+        if i > 500_000:
             break
 
     # Write to a new fasta file
