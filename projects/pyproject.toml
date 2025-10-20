@@ -3,13 +3,14 @@ name = "projects"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "matplotlib>=3.10.5",
     "notebook>=7.4.5",
     "pandas>=2.3.1",
-    "qmap",
+    "qmap-benchmark",
+    "seaborn>=0.13.2",
 ]
 
 [tool.uv.sources]
-qmap = { path = "../QMAP", editable = true }
+qmap-benchmark = { path = "../QMAP" }
