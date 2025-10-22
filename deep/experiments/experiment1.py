@@ -1,3 +1,5 @@
+import os.path
+
 import torch
 from data.dataloader import make_dataloader
 from models import ESMEncoder
@@ -47,6 +49,8 @@ def experiment1(ctx: typer.Context,
     # Preparing Result Table
     # The result table will store the logs of our training. (Like tensorboard, but better:))
     # We can view those logs with cli: ```deepboard results/resultTable.db```
+    if not os.path.exists("results"):
+        os.makedirs("results")
     rtable = ResultTable("results/resultTable.db", nocommit_action=NoCommitAction.RAISE)
     if DEBUG:
         log(f"Running in {Colors.warning}DEBUG{Colors.reset} mode!")
