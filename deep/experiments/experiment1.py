@@ -86,7 +86,7 @@ def experiment1(ctx: typer.Context,
     loss.to(device)
     optimizer = torch.optim.AdamW(list(model.parameters()) + list(loss.parameters()),  lr=config["training"]["lr"], weight_decay=0.)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
-                                                           eta_min=config["training"]["min_lr"],
+                                                           eta_min=0.,
                                                            T_max=config["training"]["num_epochs"] * len(train_loader)
                                                            )
 
