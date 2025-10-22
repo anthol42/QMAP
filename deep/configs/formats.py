@@ -1,9 +1,9 @@
 from pyutils import ConfigFormat, Option, Options, Default, Profile
-config_format = ConfigFormat({
+config_format = {
     "data":{
-        "batch_size": Profile(int),
+        "batch_size": int,
         "shuffle": Default(bool, True),
-        "path": Profile(str),
+        "path": str,
         "num_workers": Profile(int),
         "dataset": Default(str, "")
     },
@@ -22,10 +22,8 @@ config_format = ConfigFormat({
         "orthogonality": Default(float, 0.),
         "gradient_accumulation": Default(int, 0),
     },
-    "model":Options(
-        Option("ESM")({
-            "model_dir": Profile(str),
-            "weights_path": Profile(str),
+    "model":{
+            "weights_path": str,
             "name": str,
             "num_layers": int,
             "embed_dim": int,
@@ -48,6 +46,5 @@ config_format = ConfigFormat({
             "head_residual": Default(bool, False),
             "learned_pooling": Default(bool, False),
             "all_layers": Default(bool, False),
-        })
-    ),
-})
+        }
+}

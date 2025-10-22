@@ -1,3 +1,6 @@
+"""
+Test QMAP encoder, then push it to the Hugging Face Hub.
+"""
 import os
 
 import torch
@@ -6,7 +9,7 @@ from utils.esm_alphabet import ESMAlphabet
 from ema_pytorch import EMA
 from huggingface_hub import PyTorchModelHubMixin
 import shutil
-from losses import Criterion
+from loss import Criterion
 from training.train import evaluate
 from data import make_dataloader
 import utils
@@ -25,13 +28,10 @@ class QMAPModel(
     PyTorchModelHubMixin,
     repo_url="anthol42/qmap"
 ):
-    def __init__(self, config):
+    def __init__(self, config = None):
         super().__init__()
-        alphabet = ESMAlphabet()
-        model = ESMEncoder(
-        alphabet=alphabet,
-        **config
-        )
+        config = {} if config is None else config
+        model = ESMEncoder(**config)
         ema_model = EMA(model)
         checkpoint = torch.load(".weights/ESM_35M.pth", weights_only=False, map_location="cpu")
         ema_model.load_state_dict(checkpoint["ema_state_dict"])
@@ -49,27 +49,7 @@ class QMAPModel(
         return self.encoder(seqs)
 
 if __name__ == "__main__":
-    config = dict(
-            num_layers=12,
-            embed_dim=480,
-            attention_heads=20,
-            token_dropout=True,
-            attention_dropout=0.,
-            layer_dropout=0.,
-            head_dropout=0.,
-            head_dim=512,
-            head_depth=2,
-            proj_dim=512,
-            use_clf_token=False,
-            norm_embedding=True,
-            norm='none',
-            prenorm=False,
-            linbranch=True,
-            head_residual=True,
-            learned_pooling=False,
-            all_layers=True,
-        )
-    model = QMAPModel(config)
+    model = QMAPModel()
 
     model.save_pretrained("model_assets")
 
@@ -89,12 +69,11 @@ if __name__ == "__main__":
             "shuffle": True
         }
     }
-    train_loader, val_loader, test_loader = make_dataloader(config=data_cfg, alphabet=alphabet, fract=1.)
+    train_loader, val_loader, test_loader = make_dataloader(config=data_cfg, fract=1.)
     model = QMAPModel.from_pretrained("model_assets")
     model.to(device)
 
     loss = Criterion(
-        loss_type='MSE',
         smoothness=0.01,
         diversity=0.001,
         var=0.,

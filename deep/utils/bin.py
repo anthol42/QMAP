@@ -1,4 +1,4 @@
-from pyutils import logger, Colors
+from pyutils import logger, Colors, progress
 
 # Available loggers: log, warn, error
 
@@ -23,5 +23,7 @@ def config_loggers_with_verbose(verbose: int = 3):
                  time_formatter=lambda x: (f'{Colors.darken}{x.strftime("%Y-%m-%d %H:%M:%S")}{Colors.reset}', False),
                  start_sep="\n\t", origin_formatter=f"{Colors.darken} |  From: {'{}'} -- line no {'{}'}{Colors.reset}",
                  console=verbose >= 0)
+    if verbose < 3:
+        progress.set_config(type="dl", display=False)
 
 config_loggers_with_verbose()

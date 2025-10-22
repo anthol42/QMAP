@@ -30,23 +30,3 @@ class DynamicMetric(Metric):
         return preds, target
 
 
-if __name__ == "__main__":
-    from torchmetrics import Accuracy
-    import time
-    # loss = DynamicMetric()
-    acc = Accuracy(task='binary')
-    s = 0
-    for i in range(100):
-        ti = torch.tensor(i).unsqueeze(0)
-        pred = ti%2
-        out = acc(pred, torch.tensor(1).unsqueeze(0))
-        a = (pred == 1).int().item()
-        print(f"{out}")
-        s += a
-        time.sleep(0.1)
-
-    print()
-    print("Real mean: ", s/100)
-    print("DynamicMetric mean: ", acc.compute())
-
-

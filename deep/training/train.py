@@ -1,15 +1,11 @@
-import optuna
 import torch
 import utils
 from pyutils import progress
-from utils import State, DynamicMetric, format_metrics
-from typing import *
+from utils import DynamicMetric, format_metrics
 from utils.bin import *
 
-def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, device, scheduler=None, scaler=None,
-                    metrics: dict = None, sample_inputs: Optional[str] = None, gradient_accumulation: Optional[int] = None):
-    if gradient_accumulation is None:
-        gradient_accumulation = 1
+def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, device, resultSocket, start_step: int, scheduler=None, scaler=None,
+                    metrics: dict = None):
 
     if metrics is None:
         metrics = {}
@@ -20,13 +16,8 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
         m.reset()
     prg: progress
     for i, prg, (s1_str, s2_str, seq1, seq2, label) in progress(dataloader, type="dl").enum().ref():
-        if epoch == 0 and i == 0 and sample_inputs is not None:
-            print()
-            log(f"Saving sample inputs at {sample_inputs}")
-            torch.save((s1_str, s2_str, seq1, seq2, label), sample_inputs)
         # Setup - Copying to gpu if available
         seq1, seq2, label = seq1.to(device), seq2.to(device), label.to(device)
-        # for i in range(10_000):
         optimizer.zero_grad()
         # Training with possibility of mixed precision
         if scaler:
@@ -35,21 +26,17 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
                 pred2 = model(seq2)
                 loss, pred = criterion(pred1, pred2, label) # MSE loss between predicted and true labels=
             scaler.scale(loss).backward()
-            if i % gradient_accumulation == 0: # Gradient accumulation
-                scaler.step(optimizer)
-                scaler.update()
+            scaler.step(optimizer)
+            scaler.update()
         else:
             pred1 = model(seq1)
             pred2 = model(seq2)
             loss, pred = criterion(pred1, pred2, label)  # MSE loss between predicted and true labels
             loss.backward()
-            if i % gradient_accumulation == 0: # Gradient accumulation
-                optimizer.step()
-        if i % gradient_accumulation == 0: #Follow gradient accumulation
-            ema_model and ema_model.update()
+            optimizer.step()
 
+        ema_model and ema_model.update()
 
-        State.global_step += 1
 
         if scheduler:
             scheduler.step()
@@ -60,19 +47,16 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
         pred = pred.detach().cpu()
         for metric_name, metric_fn in metrics.items():
             metr[metric_name] = metric_fn(targets, pred)
-
-            # print(f"{i} - Loss: {loss.item()}; {','.join(f'{metric}: {fn(targets, pred)}' for metric, fn in metrics.items())}")
         metr["loss"] = loss.item()
         lossCounter(loss)
 
         # Report metrics
         if i % 100 == 0 and i > 0: # We ignore the first step
-            State.resultSocket.add_scalar('Step/loss', metr["loss"], epoch=epoch, step=State.global_step)
-            # State.resultSocket.add_scalar('Step/alpha', criterion.activation.weight.item(), epoch=epoch, step=State.global_step)
+            resultSocket.add_scalar('Step/loss', metr["loss"], epoch=epoch, step=start_step + i)
             for metric_name, value in metr.items():
                 if metric_name == "loss":
                     continue
-                State.resultSocket.add_scalar(f'Step/{metric_name}', value, epoch=epoch, step=State.global_step)
+                resultSocket.add_scalar(f'Step/{metric_name}', value, epoch=epoch, step=start_step + i)
 
         #Display metrics
         prg.report(
@@ -80,24 +64,15 @@ def train_one_epoch(dataloader, model, ema_model, optimizer, criterion, epoch, d
             **{k: v.compute().item() for k, v in metrics.items()}
         )
 
-    if i % gradient_accumulation != 0:
-        # Do last step
-        if scaler:
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            optimizer.step()
-
-        ema_model and ema_model.update()
-
     print()
     # Report epochs metrics
     for metric_name, counter in metrics.items():
-        State.resultSocket.add_scalar(f'Train/{metric_name}', counter.compute(), State.global_step, epoch=epoch)
-    State.resultSocket.add_scalar(f'Train/loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
+        resultSocket.add_scalar(f'Train/{metric_name}', counter.compute(), start_step + i, epoch=epoch)
+    resultSocket.add_scalar(f'Train/loss', lossCounter.compute(), start_step + i, epoch=epoch, flush=True)
+    return i # Number of steps run
 
 @torch.inference_mode()
-def validation_step(model, dataloader, criterion, epoch, device, metrics: dict = None, verbose: bool = True):
+def validation_step(model, dataloader, criterion, epoch, device, resultSocket, global_step: int, metrics: dict = None, verbose: bool = True):
     if metrics is None:
         metrics = {}
     model.eval()
@@ -132,24 +107,21 @@ def validation_step(model, dataloader, criterion, epoch, device, metrics: dict =
     # Report epochs metrics
     last_valid = {}
     for metric_name, counter in metrics.items():
-        State.resultSocket.add_scalar(f'Valid/{metric_name}', counter.compute(), State.global_step, epoch=epoch)
+        resultSocket.add_scalar(f'Valid/{metric_name}', counter.compute(), global_step, epoch=epoch)
         last_valid[metric_name] = counter.compute()
-    State.resultSocket.add_scalar(f'Valid/loss', lossCounter.compute(), State.global_step, epoch=epoch, flush=True)
+    resultSocket.add_scalar(f'Valid/loss', lossCounter.compute(), global_step, epoch=epoch, flush=True)
     last_valid["loss"] = lossCounter.compute()
-    State.last_valid = last_valid
+    return last_valid
 
-def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, scheduler=None,
-          metrics: dict = None, noscaler: bool = False, watch: str = "accuracy", sample_inputs: Optional[str] = None,
-          optuna_trial: Optional[optuna.Trial] = None,
-          verbose: int = 3, gradient_accumulation: Optional[int] = None):
-    log("Training in optuna mode") if optuna_trial is not None else None
-    State.global_step = 0
+def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_epochs, device, config, resultSocket, scheduler=None,
+          metrics: dict = None, verbose: int = 3):
+    global_step = 0
     # Checkpoints
-    m, b = ("MIN", float("inf")) if watch == "loss" or "MAE" else ("MAX", float('-inf'))
+    m, b = ("MIN", float("inf"))
     save_best_model = utils.SaveBestModel(
-        config["model"]["model_dir"], metric_name=f"validation {watch}", model_name=config["model"]["name"],
+        config["model"]["model_dir"], metric_name=f"validation mae", model_name=config["model"]["name"],
         best_metric_val=b, evaluation_method=m, verbose=verbose == 3)
-    if str(device) == "cuda" and not noscaler:
+    if str(device) == "cuda":
         # For mixed precision training
         scaler = torch.amp.GradScaler()
     else:
@@ -161,23 +133,15 @@ def train(model, ema_model, optimizer, train_loader, val_loader, criterion, num_
         print(f"Epoch {epoch}/{num_epochs}") if verbose == 3 else None
 
         # Train the epoch and validate
-        train_one_epoch(
-            train_loader, model, ema_model, optimizer, criterion, epoch, device, scheduler, scaler, metrics,
-            sample_inputs=sample_inputs, gradient_accumulation=gradient_accumulation
+        global_step += train_one_epoch(train_loader, model, ema_model, optimizer, criterion, epoch, device, resultSocket, global_step, scheduler, scaler, metrics)
+        last_valid = validation_step(
+            ema_model, val_loader, criterion, epoch, device, resultSocket, global_step, metrics, verbose == 3
         )
-        validation_step(
-            ema_model if ema_model is not None else model,
-            val_loader, criterion, epoch, device, metrics, verbose == 3
-        )
-
-        if optuna_trial is not None:
-            # Report the best value to optuna
-            optuna_trial.report(State.last_valid[watch], epoch)
-            if optuna_trial.should_prune():
-                raise optuna.TrialPruned()
 
         # Checkpoint
-        save_best_model(State.last_valid[watch], epoch, model, ema_model, optimizer, criterion)
+        save_best_model(last_valid['mae'], epoch, model, ema_model, optimizer, criterion)
+
+    return global_step
 
 @torch.inference_mode()
 def evaluate(model, dataloader, criterion, device, metrics: dict = None):

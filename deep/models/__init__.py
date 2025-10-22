@@ -1,1 +1,1 @@
-from .esm import ESMEncoder
+from .esm_encoder import ESMEncoder

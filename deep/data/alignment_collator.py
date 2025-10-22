@@ -1,8 +1,12 @@
-from .base_collator import BaseCollator
 import torch
 from typing import Sequence, Tuple, List
+from utils.esm_alphabet import ESMAlphabet
 
-class AlignmentCollator(BaseCollator):
+class AlignmentCollator:
+    def __init__(self, max_len: int = 100):
+        self.alphabet = ESMAlphabet()
+        self.max_len = max_len
+
     def __call__(self, raw_batch: Sequence[Tuple[str, str, float]]) -> \
             Tuple[List[str], List[str], torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -43,4 +47,13 @@ class AlignmentCollator(BaseCollator):
             tokens[i, 1:len(toks) + 1] = toks
             tokens[i, len(toks)] = alphabet.eos_idx
         tokens[:, 0] = alphabet.cls_idx
+        return tokens
+
+    def tokenize_batch(self, X):
+        return [self.alphabet.encode(seq) for seq in X] # Make tensors
+
+    def prep_tensors(self, B, L):
+        tokens = torch.empty((B, L + 2), dtype=torch.int64) # We add 1 because of the <bos> token, aka <cls>
+        tokens.fill_(self.alphabet.padding_idx)
+
         return tokens

@@ -1,8 +1,8 @@
 data:
-  batch_size: [128, 256]
-  num_workers: [2, 2] # local, hpc
-  path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
-  dataset: "synt"
+  batch_size: 128
+  num_workers: 2
+  # Path to where you stored the dataset you downloaded and annotated
+  path: "../data/build"
 training:
   num_epochs: 10
   lr: 5.e-4
@@ -17,8 +17,10 @@ training:
   orthogonality: 0.05
   gradient_accumulation: 0
 model:
-  model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
-  weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
+  # Path to where to save the model checkpoints
+  model_dir: "saved_models/ESM"
+  # Path to where to store the weights of the pretrained ESM model
+  weights_path: ".weights/esm2"
   name: "ESM_35M"
   attention_heads: 20
   embed_dim: 480

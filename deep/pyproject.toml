@@ -1,12 +1,12 @@
 [project]
-name = "template-project"
+name = "deep"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deep Learning based pairwise identity calculator for peptide sequences"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "antho-utils>=0.1.0",
-    "deepboard[full]>=0.2.3",
+    "antho-utils==0.1.0",
+    "deepboard[full]==0.2.3",
     "ema-pytorch>=0.7.7",
     "fair-esm>=2.0.0",
     "huggingface-hub>=0.34.3",
@@ -25,6 +25,7 @@ dependencies = [
     "torchinfo>=1.8.0",
     "torchmetrics>=1.7.2",
     "torchvision>=0.22.1",
+    "typer>=0.20.0",
 ]
 
 [tool.uv.sources]
