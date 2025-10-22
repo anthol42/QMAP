@@ -2,17 +2,33 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from typing import Optional, Literal
+from utils.bin import *
 
 from .functional import diversity_loss, variance_diversity_loss, orthogonality_loss
 
+class LinearActivation(nn.Module):
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        return 2*X - 1
 class Criterion(nn.Module):
     def __init__(self, loss_type: Literal['MSE', 'BCE'] = 'MSE', diversity: float = 0., var: float = 0.,
-                 orthogonality: float = 0., smoothness: float = 0.):
+                 orthogonality: float = 0., smoothness: float = 0., activation_type: Literal['PReLU', 'Identity', 'Linear'] = 'PReLU'):
         super().__init__()
         self.loss_type = loss_type
         if loss_type == "MSE":
             self.criterion = nn.MSELoss()
-            self.activation = nn.PReLU(init=0.25)
+            match activation_type:
+                case 'PReLU':
+                    log("Using PReLU as activation function")
+                    self.activation = nn.PReLU(init=0.25)
+                case 'Identity':
+                    log("Using Identity as activation function")
+                    self.activation = nn.Identity()
+                case 'Linear':
+                    log("Using Linear as activation function")
+                    self.activation = LinearActivation()
+                case _:
+                    raise NotImplementedError(f"Received unknown activation type: {activation_type}")
+
         elif loss_type == "BCE": # TODO: Find why it does not work
             self.criterion = nn.BCELoss()
             self.activation = nn.PReLU(init=-0.5)

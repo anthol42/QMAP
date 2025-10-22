@@ -13,6 +13,7 @@ config_format = ConfigFormat({
         "min_lr": float,
         "weight_decay": float,
         "loss": str, # MSE or BCE
+        "activation_type": Default(str, "PReLU"), # PReLU, Identity, Linear
         "optimizer": str, # Adam or AdamW
         "ema_beta": Default(float, 0.),
         "smoothness": Default(float, 0.),
