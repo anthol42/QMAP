@@ -2,7 +2,7 @@
 # Function: `train_test_split()`
 
 ```python
-train_test_split(sequences: list[str], metadata: list[Any], test_size: typing.Union[float, int] = 0.2, threshold: float = 0.6, method: typing.Literal[max, prob, random] = "random", temperature: float = 1.0, train_size: typing.Union[float, int, NoneType] = None, random_state: typing.Union[int, NoneType] = None, shuffle: bool = True, post_filtering: bool = False, encoder_batch: int = 512, batch_size: int = 0, n_iterations: int = -1) -> tuple:
+train_test_split(sequences: list[str], metadata: list[Any], test_size: typing.Union[float, int] = 0.2, threshold: float = 0.6, method: typing.Literal[max, prob, random] = "random", temperature: float = 1.0, train_size: typing.Union[float, int, NoneType] = None, random_state: typing.Union[int, NoneType] = None, shuffle: bool = True, post_filtering: bool = False, encoder_batch: int = 512, batch_size: int = 0, n_iterations: int = -1, force_cpu: bool = True) -> tuple:
 ```
 
 **Description:** Splits the sequences into training and test sets based on a given test or train size. It will split the data
@@ -34,6 +34,7 @@ independent.
 :param encoder_batch: The batch size of the encoder.
 :param batch_size: If you get an out of memory error, you can reduce the batch size to a smaller value. If set to 0, the batch size will be set to the full dataset size.
 :param n_iterations: The number of iterations to run the Leiden community detection algorithm. If set to -1, it will run until convergence. It is recommended to change this parameter if it takes a long time to converge and a rough estimate of the communities is sufficient.
+:param force_cpu: If true, it will split the sequences on the CPU. This is useful if you are running out of memory on the GPU.
 :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
 
 **Parameters:**
@@ -50,4 +51,5 @@ independent.
 - `encoder_batch`: encoder_batch: int = 512
 - `batch_size`: batch_size: int = 0
 - `n_iterations`: n_iterations: int = -1
+- `force_cpu`: force_cpu: bool = True
 

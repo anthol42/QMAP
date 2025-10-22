@@ -11,7 +11,7 @@ your model on the given test set. You can also evaluate the performances of your
 same name. The subset have the same interface as the `QMAPBenchmark` class, so you can use them with the same
 methods!
 
-To use the benchmark, you must select at least the split (from 0 to 4) and the threshold (55 or 60). It is highly
+To use the benchmark, you must select at least the split (from 0 to 4). It is highly
 recommended to test your model on all splits to get a better estimate of its real-world performance and to
 accurately compare it with other models. To do so, you must use the same hyperparameters, but change the training
 and validation dataset. For each split, use the `get_train_mask` method to get a mask indicating which sequences
@@ -19,16 +19,6 @@ can be used in the training set and validation set. This mask will be True for s
 training set and False for sequences that are too similar to a sequence in the test set. Train your model on the
 subset of your training dataset where the mask is True and evaluate it on the benchmark dataset. Do this for all
 splits. See the example section for more details.
-
-Thresholds:
-
-- 55: This threshold enables a split that is considered natural as it have a maximum identity distribution between
-the train and test set similar to natural independent peptide datasets.
-
-- 60: This threshold enables a harder split because it increases the diversity of the test set. Even if the
-maximum identity distribution is shifted to more similar sequences between train and test compared to the natural
-split (55), it is considered conservative as models do not perform as well on this split. It is recommended to use
-this split as it gives a more conservative estimate of the model's real-world performance.
 
 ## Method: `accuracy()`
 

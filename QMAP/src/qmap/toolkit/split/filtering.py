@@ -4,7 +4,7 @@ from ..aligner import Encoder
 
 
 def filter_out(train_sequences: List[str], *metadata: List[Any], ref_sequences: List[str],
-               threshold: float = 0.55, encoder_batch_size: int = 512, aligner_batch_size: int = 0, force_cpu: bool = True) -> tuple:
+               threshold: float = 0.6, encoder_batch_size: int = 512, aligner_batch_size: int = 0, force_cpu: bool = True) -> tuple:
     """
     Removes samples in train_sequences and metadata that are more similar than the threshold to any sequence in
     ref_sequences.
@@ -13,7 +13,7 @@ def filter_out(train_sequences: List[str], *metadata: List[Any], ref_sequences: 
     ```python
     from qmap.toolkit.split import filter_out
 
-    train_seq, train_labels = filter_out(train_sequences, train_labels, ref_sequences=test_sequences, threshold=0.55)
+    train_seq, train_labels = filter_out(train_sequences, train_labels, ref_sequences=test_sequences, threshold=0.60)
     ```
     :param train_sequences: The sequences that will be filtered.
     :param metadata: The metadata associated with the sequences that will be filtered.
