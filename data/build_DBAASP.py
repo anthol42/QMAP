@@ -126,16 +126,15 @@ with open(f'{BUILD_PATH}/dataset.fasta', 'w') as f:
 # We will keep only sequences smaller than 100 amino acids
 dataset_tmp = [sample for sample in dataset_tmp if len(sample['Sequence']) <= 100]
 for split in range(5):
-    for threshold in [0.55, 0.6]:
-        train_sequences, test_sequences, train_samples, test_samples = train_test_split(
-            [sample['Sequence'] for sample in dataset_tmp],
-            dataset_tmp,
-            threshold=threshold,
-            test_size=0.2,
-        )
-        # Save the dataset as json
-        with open(f'{BUILD_PATH}/benchmark_threshold-{int(100*threshold)}_split-{split}.json', "w") as f:
-            json.dump(test_samples, f)
+    train_sequences, test_sequences, train_samples, test_samples = train_test_split(
+        [sample['Sequence'] for sample in dataset_tmp],
+        dataset_tmp,
+        threshold=0.6,
+        test_size=0.2,
+    )
+    # Save the dataset as json
+    with open(f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json', "w") as f:
+        json.dump(test_samples, f)
 
 # Upload to hugginface
 hf_token = os.getenv('HUGGINGFACE_HUB_TOKEN')
@@ -152,10 +151,9 @@ api.create_repo(
 )
 
 for split in range(5):
-    for threshold in [0.55, 0.6]:
-        api.upload_file(
-            path_or_fileobj=f'{BUILD_PATH}/benchmark_threshold-{int(100*threshold)}_split-{split}.json',
-            path_in_repo=f'benchmark_threshold-{int(100*threshold)}_split-{split}.json',  # name in the repo
-            repo_id="anthol42/qmap_benchmark_2025",
-            repo_type="dataset"
-        )
+    api.upload_file(
+        path_or_fileobj=f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json',
+        path_in_repo=f'benchmark_threshold-60_split-{split}.json',  # name in the repo
+        repo_id="anthol42/qmap_benchmark_2025",
+        repo_type="dataset"
+    )
