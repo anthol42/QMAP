@@ -1,0 +1,20 @@
+data:
+  batch_size: [512, 2048]
+  num_workers: [2, 2] # local, hpc
+  path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
+training:
+  num_epochs: 20
+  lr: 0.0001
+  min_lr: 0.
+  weight_decay:  5.e-5
+  loss: "MSE"
+  optimizer: "AdamW"
+model:
+  model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
+  weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
+  name: "ESM_8M"
+  num_layers: 6
+  embed_dim: 320
+  attention_heads: 20
+  head_dropout: 0.
+  proj_dim: 128

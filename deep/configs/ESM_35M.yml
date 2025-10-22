@@ -1,0 +1,35 @@
+data:
+  batch_size: [128, 256]
+  num_workers: [2, 2] # local, hpc
+  path: ["../peptide_atlas/build", "/home/lavertu/scratch/QMAP/dataset"]
+  dataset: "synt"
+training:
+  num_epochs: 10
+  lr: 5.e-4
+  min_lr: 0.
+  weight_decay:  0.
+  loss: "MSE"
+  optimizer: "AdamW"
+  ema_beta: 0.9999
+  smoothness: 0.01
+  diversity: 0.001
+  var: 0.
+  orthogonality: 0.05
+  gradient_accumulation: 0
+model:
+  model_dir: ["saved_models/ESM", "/home/lavertu/scratch/QMAP/saved_models"]
+  weights_path: [".weights/esm2", "/home/lavertu/scratch/QMAP/weights/esm2"]
+  name: "ESM_35M"
+  attention_heads: 20
+  embed_dim: 480
+  num_layers: 12
+  head_dropout: 0.
+  head_dim: 0
+  proj_dim: 512
+  head_depth: 2
+  use_clf_token: False
+  head_norm: none
+  linbranch: True
+  head_residual: True # Helps generalization with head_depth = 2
+  learned_pooling: False
+  all_layers: True
