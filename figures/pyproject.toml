@@ -11,6 +11,7 @@ dependencies = [
     "qmap-benchmark",
     "rdkit>=2025.9.1",
     "scikit-learn>=1.7.2",
+    "transformers>=4.57.1",
 ]
 
 [tool.uv.sources]
