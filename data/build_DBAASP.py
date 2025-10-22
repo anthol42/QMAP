@@ -140,7 +140,8 @@ for split in range(5):
 # Upload to hugginface
 hf_token = os.getenv('HUGGINGFACE_HUB_TOKEN')
 if not hf_token:
-    raise ValueError("HUGGINGFACE_HUB_TOKEN not found in environment variables")
+    print("Huggin face token not found. Cannot push to hub. Exiting.")
+    exit(1)
 login(token=hf_token)
 
 api = HfApi()

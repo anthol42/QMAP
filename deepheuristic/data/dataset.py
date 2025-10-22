@@ -57,6 +57,7 @@ class AlignmentDataset(Dataset):
         :param split: The split to load (train, val, test)
         :param fract: The fraction of the sequences to load
         :param dataset: The dataset to load from the path
+        TODO: Remove the random option
         :param random: If true, select a variant dataset where the samples aligned are sampled randomly
         :return: The sequence pair ids and the labels (identities)
         """

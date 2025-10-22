@@ -3,7 +3,6 @@ import pandas as pd
 import os
 from pathlib import PurePath
 from utils import read_fasta
-import argparse
 
 
 def parse_cdhit_clstr(clstr_path: str) -> pd.DataFrame:
@@ -65,10 +64,7 @@ def split_clusters(clusters, test_ratio: float = 0.2, val_ratio = 0.1) -> tuple:
     return train_ids, val_ids, test_ids
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--suffix", default='', type=str)
-    SUFFIX = parser.parse_args().suffix
-    clusters = parse_cdhit_clstr(f".cache/clusters{SUFFIX}.clstr")
+    clusters = parse_cdhit_clstr(f".cache/clusters.clstr")
     train_ids, val_ids, test_ids = split_clusters(clusters)
 
     # Now, make the datasets in the build directory
@@ -76,20 +72,20 @@ if __name__ == "__main__":
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    dataset = read_fasta(f".cache/peptide_atlas{SUFFIX}.fasta")
+    dataset = read_fasta(f".cache/peptide_atlas_synt.fasta")
 
     # Train set
-    with open(out_path / f"train{SUFFIX}.fasta", "w") as f:
+    with open(out_path / f"train.fasta", "w") as f:
         for id_ in train_ids:
             f.write(f">{id_}\n{dataset[id_]}\n")
 
     # Validation set
-    with open(out_path / f"val{SUFFIX}.fasta", "w") as f:
+    with open(out_path / f"val.fasta", "w") as f:
         for id_ in val_ids:
             f.write(f">{id_}\n{dataset[id_]}\n")
 
     # Test set
 
-    with open(out_path / f"test{SUFFIX}.fasta", "w") as f:
+    with open(out_path / f"test.fasta", "w") as f:
         for id_ in test_ids:
             f.write(f">{id_}\n{dataset[id_]}\n")
