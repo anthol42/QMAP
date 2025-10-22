@@ -22,7 +22,7 @@ class QMAPBenchmark(BenchmarkSubset):
     same name. The subset have the same interface as the `QMAPBenchmark` class, so you can use them with the same
     methods!
 
-    To use the benchmark, you must select at least the split (from 0 to 4) and the threshold (55 or 60). It is highly
+    To use the benchmark, you must select at least the split (from 0 to 4). It is highly
     recommended to test your model on all splits to get a better estimate of its real-world performance and to
     accurately compare it with other models. To do so, you must use the same hyperparameters, but change the training
     and validation dataset. For each split, use the `get_train_mask` method to get a mask indicating which sequences
@@ -30,20 +30,9 @@ class QMAPBenchmark(BenchmarkSubset):
     training set and False for sequences that are too similar to a sequence in the test set. Train your model on the
     subset of your training dataset where the mask is True and evaluate it on the benchmark dataset. Do this for all
     splits. See the example section for more details.
-
-    Thresholds:
-
-    - 55: This threshold enables a split that is considered natural as it have a maximum identity distribution between
-    the train and test set similar to natural independent peptide datasets.
-
-    - 60: This threshold enables a harder split because it increases the diversity of the test set. Even if the
-    maximum identity distribution is shifted to more similar sequences between train and test compared to the natural
-    split (55), it is considered conservative as models do not perform as well on this split. It is recommended to use
-    this split as it gives a more conservative estimate of the model's real-world performance.
     """
     def __init__(self,
                  split: int = 0,
-                 threshold: Literal[55, 60] = 60,
                  *,
                  modified_termini: bool = False,
                  unusual_aa: bool = False,
@@ -76,14 +65,12 @@ class QMAPBenchmark(BenchmarkSubset):
         """
         if split not in [0, 1, 2, 3, 4]:
             raise ValueError("split must be one of 0, 1, 2, 3, or 4.")
-        if threshold not in [55, 60]:
-            raise ValueError("threshold must be either 55 or 60.")
         self.split = split
-        self.threshold = threshold / 100  # Convert to fraction
+        self.threshold = 0.6
 
         path = hf_hub_download(
             repo_id="anthol42/qmap_benchmark_2025",
-            filename=f"benchmark_threshold-{threshold}_split-{split}.json",
+            filename=f"benchmark_threshold-60_split-{split}.json",
             repo_type="dataset"
         )
         self.raw_dataset = self._load_dataset(path)
@@ -162,7 +149,7 @@ class QMAPBenchmark(BenchmarkSubset):
         self.max_targets = self.max_targets if self.dataset_type == 'MIC' else None
         self.min_targets = self.min_targets if self.dataset_type == 'MIC' else None
 
-        super().__init__(self.split, threshold, self.dataset_type, self.species_subset,
+        super().__init__(self.split, self.dataset_type, self.species_subset,
                          self.sequences, self.species, self._targets, self.c_termini, self.n_termini, self.unusual_aa,
                          self.max_targets, self.min_targets,
                          modified_termini=modified_termini,
@@ -188,7 +175,6 @@ class QMAPBenchmark(BenchmarkSubset):
 
         return BenchmarkSubset(
             split=self.split,
-            threshold=int(100*self.threshold),
             dataset_type=self.dataset_type,
             species_subset=self.species_subset,
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
@@ -217,7 +203,6 @@ class QMAPBenchmark(BenchmarkSubset):
 
         return BenchmarkSubset(
             split=self.split,
-            threshold=int(100 * self.threshold),
             dataset_type=self.dataset_type,
             species_subset=self.species_subset,
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],
@@ -252,7 +237,6 @@ class QMAPBenchmark(BenchmarkSubset):
 
         return BenchmarkSubset(
             split=self.split,
-            threshold=int(100 * self.threshold),
             dataset_type=self.dataset_type,
             species_subset=self.species_subset,
             sequences=[seq for i, seq in enumerate(self.sequences) if mask[i]],

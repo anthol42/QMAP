@@ -9,7 +9,7 @@ class BenchmarkSubset(Dataset):
     """
     Base class of the QMAP benchmark class. It provides a common interface for the benchmark dataset and the subsets.
     """
-    def __init__(self, split: int, threshold: Literal[55, 60], dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'],  species_subset: List[str],
+    def __init__(self, split: int, dataset_type: Literal['MIC', 'Hemolytic', 'Cytotoxic'],  species_subset: List[str],
                      sequences: List[str], species: Optional[List[str]], targets: List[float], c_termini: List[Optional[str]],
                      n_termini: List[Optional[str]], unusual_aa: List[dict[int, str]], max_targets: List[float],
                      min_targets: List[float],
@@ -19,7 +19,7 @@ class BenchmarkSubset(Dataset):
                      specie_as_input: bool = False,
                  ):
         self.split = split
-        self.threshold = threshold / 100
+        self.threshold = 0.6
         self.dataset_type = dataset_type
         self.species_subset = species_subset
 
@@ -170,7 +170,7 @@ class BenchmarkSubset(Dataset):
 
         targets = self.targets.reshape(-1)
 
-        return QMAPClassificationMetrics(split=self.split, threshold=int(100 * self.threshold),
+        return QMAPClassificationMetrics(split=self.split,
                            balanced_accuracy=balanced_accuracy(targets, predictions),
                            precision=precision(targets, predictions),
                            recall=recall(targets, predictions),
@@ -219,7 +219,7 @@ class BenchmarkSubset(Dataset):
             pearson += pearsonr(targets[:, col][mask], predictions[:, col][mask]).statistic
 
         n = predictions.shape[1]
-        return QMAPRegressionMetrics(split=self.split, threshold=int(100 * self.threshold),
+        return QMAPRegressionMetrics(split=self.split,
                            rmse=rmse / n,
                            mse=mse / n,
                            mae=mae / n,
