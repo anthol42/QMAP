@@ -18,12 +18,13 @@ use crate::utils::alignment::compute_upper_triangle_matrix;
 /// * `gap_open` - Gap opening penalty (default: 5)
 /// * `gap_extension` - Gap extension penalty (default: 1)
 /// * `show_progress` - Whether to show progress bar (default: true)
+/// * `num_threads` - Number of threads to use (default: None = use all cores)
 ///
 /// # Returns
 ///
 /// A 2D symmetric numpy array of shape (n, n) containing pairwise identity scores
 #[pyfunction]
-#[pyo3(signature = (sequences, matrix="blosum62", gap_open=5, gap_extension=1, show_progress=true))]
+#[pyo3(signature = (sequences, matrix="blosum62", gap_open=5, gap_extension=1, show_progress=true, num_threads=None))]
 pub fn compute_global_identity<'py>(
     py: Python<'py>,
     sequences: Vec<String>,
@@ -31,6 +32,7 @@ pub fn compute_global_identity<'py>(
     gap_open: i32,
     gap_extension: i32,
     show_progress: bool,
+    num_threads: Option<usize>,
 ) -> PyResult<Bound<'py, PyArray2<f32>>> {
     // Load substitution matrix
     let sub_matrix = Matrix::from(matrix).map_err(|e| {
@@ -52,7 +54,7 @@ pub fn compute_global_identity<'py>(
     let total_size = sequences.len();
 
     // Compute upper triangle matrix (diagonal + upper triangle only)
-    let mut pairwise_identity = compute_upper_triangle_matrix(&sequences, &aligner, show_progress);
+    let mut pairwise_identity = compute_upper_triangle_matrix(&sequences, &aligner, show_progress, num_threads);
 
     // Copy upper triangle to lower triangle to exploit symmetry
     for row in 1..total_size {

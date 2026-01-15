@@ -112,11 +112,13 @@ sha2 = "0.10.9"             # SHA-256 hashing for cache keys
 - Supports caching based on SHA-256 sequence hash + threshold
 - Cache files stored in system cache directory
 
-#### 3. Binary Mask for Train/Test Splits
+#### 3. Binary Mask for Train/Test Splits ✅ **Implemented**
 - Compares all train sequences against all test sequences
 - Marks train sequences for removal if any test sequence exceeds threshold
 - Ensures no data leakage in ML splits
-- Supports caching
+- Supports caching with SHA-256 hash-based keys
+- Memory-efficient: O(n_train) memory usage
+- Multi-threaded with configurable thread count
 
 ### Alignment Algorithm
 
@@ -246,7 +248,8 @@ def compute_global_identity(
     matrix: str = "blosum62",
     gap_open: int = 5,
     gap_extension: int = 1,
-    show_progress: bool = True
+    show_progress: bool = True,
+    num_threads: int | None = None
 ) -> numpy.ndarray:
 ```
 
@@ -258,6 +261,7 @@ def compute_global_identity(
 - `gap_open` (int): Gap opening penalty (default: 5)
 - `gap_extension` (int): Gap extension penalty (default: 1)
 - `show_progress` (bool): Display progress bar to stderr (default: True)
+- `num_threads` (int | None): Number of threads to use for parallel computation (default: None = use all available cores)
 
 **Returns:**
 - `numpy.ndarray`: 2D symmetric array of shape (n, n) containing pairwise identity scores (float32)
@@ -315,7 +319,8 @@ def create_edgelist(
     gap_open: int = 5,
     gap_extension: int = 1,
     use_cache: bool = True,
-    show_progress: bool = True
+    show_progress: bool = True,
+    num_threads: int | None = None
 ) -> numpy.ndarray:
 ```
 
@@ -327,6 +332,7 @@ def create_edgelist(
 - `gap_extension` (int): Gap extension penalty (default: 1)
 - `use_cache` (bool): Whether to use caching (default: True)
 - `show_progress` (bool): Display progress bar to stderr (default: True)
+- `num_threads` (int | None): Number of threads to use for parallel computation (default: None = use all available cores)
 
 **Returns:**
 - `numpy.ndarray`: 2D array of shape (n_edges, 3) with dtype float64
@@ -418,12 +424,73 @@ print(f"Cache directory: {cache_dir}")
 # On Windows: C:\Users\username\AppData\Local\pwiden_engine\cache
 ```
 
-### Future Functions (Not Yet Implemented)
+### compute_binary_mask (✅ Implemented)
 
+Computes a binary mask to identify training sequences that are too similar to test sequences.
+For each training sequence, compares it against all test sequences. If any test sequence
+has identity >= threshold, the corresponding mask element is set to True.
+
+**Function signature:**
 ```python
-# Binary mask for train/test (planned)
-mask = pwiden_engine.compute_binary_mask(train_sequences, test_sequences, threshold=0.3)
-# Returns: boolean numpy array indicating sequences to remove from train
+def compute_binary_mask(
+    train_sequences: list[str],
+    test_sequences: list[str],
+    threshold: float = 0.3,
+    matrix: str = "blosum62",
+    gap_open: int = 5,
+    gap_extension: int = 1,
+    use_cache: bool = True,
+    show_progress: bool = True,
+    num_threads: int | None = None
+) -> numpy.ndarray:
+```
+
+**Parameters:**
+- `train_sequences` (list[str]): List of training sequences
+- `test_sequences` (list[str]): List of test sequences
+- `threshold` (float): Minimum identity threshold for marking sequences (default: 0.3)
+- `matrix` (str): Substitution matrix name (default: "blosum62")
+- `gap_open` (int): Gap opening penalty (default: 5)
+- `gap_extension` (int): Gap extension penalty (default: 1)
+- `use_cache` (bool): Whether to use caching (default: True)
+- `show_progress` (bool): Display progress bar to stderr (default: True)
+- `num_threads` (int | None): Number of threads to use for parallel computation (default: None = use all available cores)
+
+**Returns:**
+- `numpy.ndarray`: 1D boolean array of length n_train. True indicates the training sequence
+  should be removed (has identity >= threshold with at least one test sequence)
+
+**Performance optimizations:**
+- Memory-efficient: processes one training sequence at a time, O(n_train) memory
+- Multi-threaded with rayon for parallel processing of training sequences
+- Supports caching with SHA-256 hash-based keys
+
+**Usage example:**
+```python
+import pwiden_engine
+
+train_sequences = [
+    "ACDEFGHIKLMNPQRSTVWY",
+    "ACDEFGHIKLMNPQRST",
+    "MKTIIALSYIFCLVFA",
+]
+
+test_sequences = [
+    "ACDEFGHIKLMNPQRS",
+    "MKTIIALSYIFCLVFAGH",
+]
+
+# Compute mask to identify training sequences too similar to test
+mask = pwiden_engine.compute_binary_mask(
+    train_sequences,
+    test_sequences,
+    threshold=0.5,
+    use_cache=True,
+    show_progress=True
+)
+
+# Filter training sequences
+filtered_train = [seq for i, seq in enumerate(train_sequences) if not mask[i]]
 ```
 
 ## Development Notes
@@ -456,25 +523,40 @@ mask = pwiden_engine.compute_binary_mask(train_sequences, test_sequences, thresh
 - ✅ Added comprehensive error handling with Python exceptions
 - ✅ Created working example scripts with caching demonstration (`example.py`, `test_edgelist.py`)
 - ✅ Added numpy integration for seamless array conversion
+- ✅ Implemented `compute_binary_mask` for train/test splits
+  - Memory-efficient O(n_train) implementation
+  - SHA-256 hash-based caching with collision prevention
+  - Full parameter support matching other functions
+- ✅ Added `num_threads` parameter to all parallelized functions
+  - Configurable thread pool size for `compute_global_identity`, `create_edgelist`, and `compute_binary_mask`
+  - Defaults to using all available cores when not specified
+  - Uses rayon ThreadPoolBuilder for thread pool management
+- ✅ Refactored codebase for improved readability
+  - Split monolithic lib.rs (620 lines) into modular structure
+  - Each Python function in its own file (global_identity.rs, edgelist.rs, binary_mask.rs)
+  - Utilities organized in utils/ directory (cache.rs, alignment.rs, structured_array.rs)
+  - lib.rs reduced to 40 lines as orchestration layer
 
 ### TODO Items
 1. ~~Complete `compute_global_identity` function~~ ✅ **Done**
 2. ~~Implement edgelist generation function~~ ✅ **Done**
-3. Implement binary mask function for train/test splits
+3. ~~Implement binary mask function for train/test splits~~ ✅ **Done**
 4. ~~Add caching layer with hash-based lookup~~ ✅ **Done** (SHA-256)
 5. ~~Add error handling for invalid sequences~~ ✅ **Done** (via PyValueError)
-6. Add benchmarks comparing to pure Python implementations
-7. ~~Document alignment matrix selection guidelines~~ ✅ **Documented in README and CLAUDE.md**
-8. ~~Add examples directory with usage patterns~~ ✅ **Done** (example.py, test_edgelist.py)
-9. Add unit tests for edge cases (empty sequences, invalid characters, etc.)
-10. Optimize memory usage for very large datasets (consider chunking)
-11. Add cache management utilities (clear cache, list cached files, etc.)
+6. ~~Add thread control parameter~~ ✅ **Done** (num_threads for all three functions)
+7. Add benchmarks comparing to pure Python implementations
+8. ~~Document alignment matrix selection guidelines~~ ✅ **Documented in README and CLAUDE.md**
+9. ~~Add examples directory with usage patterns~~ ✅ **Done** (example.py, test_edgelist.py, test_threads.py)
+10. Add unit tests for edge cases (empty sequences, invalid characters, etc.)
+11. Optimize memory usage for very large datasets (consider chunking)
+12. Add cache management utilities (clear cache, list cached files, etc.)
 
-### Code Organization Recommendations
-- Separate alignment logic into `src/alignment.rs`
-- Caching utilities in `src/cache.rs`
-- Python bindings in `src/python_interface.rs`
-- Keep `src/lib.rs` as orchestration layer
+### Code Organization ✅ **Implemented**
+- ✅ Alignment logic in `src/utils/alignment.rs`
+- ✅ Caching utilities in `src/utils/cache.rs`
+- ✅ Structured array helpers in `src/utils/structured_array.rs`
+- ✅ Python functions in separate files: `src/global_identity.rs`, `src/edgelist.rs`, `src/binary_mask.rs`
+- ✅ `src/lib.rs` serves as orchestration layer (40 lines)
 
 ### Testing Strategy
 - Unit tests for alignment function with known sequence pairs
@@ -490,9 +572,11 @@ mask = pwiden_engine.compute_binary_mask(train_sequences, test_sequences, thresh
 - **BLOSUM45-50**: For more distant relationships
 
 ### Performance Tuning
-- Set `RAYON_NUM_THREADS` to control parallelism
+- **Thread control**: Use the `num_threads` parameter for fine-grained control (recommended), or set `RAYON_NUM_THREADS` environment variable globally
+  - Example: `pwiden_engine.compute_global_identity(sequences, num_threads=4)`
+  - Default (None): Uses all available CPU cores
 - For very large datasets, consider batch processing to manage memory
-- Cache results when reusing the same sequence sets
+- Cache results when reusing the same sequence sets (enabled by default)
 
 ### Building on Different Platforms
 - **macOS**: May need Xcode command line tools

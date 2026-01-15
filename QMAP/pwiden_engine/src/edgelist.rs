@@ -3,6 +3,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::types::PyModule;
 use parasail_rs::{Matrix, Aligner};
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use indicatif::{ProgressBar, ProgressStyle, ProgressDrawTarget, ProgressState};
 use crate::utils::cache::get_edgelist_cache_path;
 use crate::utils::alignment::align;
@@ -26,6 +27,7 @@ use crate::utils::structured_array::create_structured_array_from_vecs;
 /// * `gap_extension` - Gap extension penalty (default: 1)
 /// * `use_cache` - Whether to use caching (default: true)
 /// * `show_progress` - Whether to show progress bar (default: true)
+/// * `num_threads` - Number of threads to use (default: None = use all cores)
 ///
 /// # Returns
 ///
@@ -34,7 +36,7 @@ use crate::utils::structured_array::create_structured_array_from_vecs;
 /// - target: u32 - target sequence index (0 to 4,294,967,295)
 /// - identity: f32 - sequence identity score
 #[pyfunction]
-#[pyo3(signature = (sequences, threshold=0.0, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true))]
+#[pyo3(signature = (sequences, threshold=0.0, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true, num_threads=None))]
 pub fn create_edgelist<'py>(
     py: Python<'py>,
     sequences: Vec<String>,
@@ -44,6 +46,7 @@ pub fn create_edgelist<'py>(
     gap_extension: i32,
     use_cache: bool,
     show_progress: bool,
+    num_threads: Option<usize>,
 ) -> PyResult<Bound<'py, PyAny>> {
     // Check cache first if enabled
     if use_cache {
@@ -109,29 +112,42 @@ pub fn create_edgelist<'py>(
 
     // Compute alignments in parallel, filter by threshold immediately
     // Only process upper triangle pairs (row < col)
-    let edgelist: Vec<(usize, usize, f32)> = (0..n)
-        .into_par_iter()
-        .flat_map(|row| {
-            let local_pb = pb.clone();
-            let results: Vec<(usize, usize, f32)> = ((row + 1)..n)
-                .filter_map(|col| {
-                    let identity = align(
-                        &aligner,
-                        sequences[row].as_bytes(),
-                        sequences[col].as_bytes(),
-                    );
-                    local_pb.inc(1);
+    let compute_edgelist = || {
+        let edgelist: Vec<(usize, usize, f32)> = (0..n)
+            .into_par_iter()
+            .flat_map(|row| {
+                let local_pb = pb.clone();
+                let results: Vec<(usize, usize, f32)> = ((row + 1)..n)
+                    .filter_map(|col| {
+                        let identity = align(
+                            &aligner,
+                            sequences[row].as_bytes(),
+                            sequences[col].as_bytes(),
+                        );
+                        local_pb.inc(1);
 
-                    if identity >= threshold {
-                        Some((row, col, identity))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            results
-        })
-        .collect();
+                        if identity >= threshold {
+                            Some((row, col, identity))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                results
+            })
+            .collect();
+        edgelist
+    };
+
+    let edgelist = if let Some(n_threads) = num_threads {
+        ThreadPoolBuilder::new()
+            .num_threads(n_threads)
+            .build()
+            .map_err(|e| PyValueError::new_err(format!("Failed to create thread pool: {}", e)))?
+            .install(compute_edgelist)
+    } else {
+        compute_edgelist()
+    };
 
     pb.finish_and_clear();
 

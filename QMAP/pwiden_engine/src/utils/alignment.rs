@@ -1,6 +1,7 @@
 use parasail_rs::Aligner;
 use ndarray::Array2;
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle, ProgressDrawTarget, ProgressState};
 use std::cmp::max;
 
@@ -8,6 +9,7 @@ use std::cmp::max;
 pub fn align(aligner: &Aligner, seq1: &[u8], seq2: &[u8]) -> f32 {
     let alignment = aligner.align(Some(seq1), seq2).unwrap();
     let alignment_len = alignment.get_length().unwrap() as f32;
+    // Ensure the denominator is longer the maximum sequence. Ensure it's a global alignment
     let min_len = max(seq1.len(), seq2.len()) as f32;
     let total = if alignment_len > min_len {alignment_len} else {min_len};
 
@@ -21,6 +23,7 @@ pub fn compute_upper_triangle_matrix(
     sequences: &[String],
     aligner: &Aligner,
     show_progress: bool,
+    num_threads: Option<usize>,
 ) -> Array2<f32> {
     let total_size = sequences.len();
 
@@ -44,29 +47,42 @@ pub fn compute_upper_triangle_matrix(
 
     // Compute pairwise identities in parallel
     // Only compute upper triangle and diagonal
-    let out_data: Vec<f32> = (0..total_size.pow(2))
-        .into_par_iter()
-        .progress_with(pb)
-        .map(|idx| {
-            let row = idx / total_size;
-            let col = idx % total_size;
+    let compute_data = || {
+        let out_data: Vec<f32> = (0..total_size.pow(2))
+            .into_par_iter()
+            .progress_with(pb)
+            .map(|idx| {
+                let row = idx / total_size;
+                let col = idx % total_size;
 
-            if row == col {
-                // Diagonal: self-identity is always 1.0
-                1.0
-            } else if row < col {
-                // Upper triangle: compute alignment
-                align(
-                    aligner,
-                    sequences[row].as_bytes(),
-                    sequences[col].as_bytes(),
-                )
-            } else {
-                // Lower triangle: placeholder
-                0.0
-            }
-        })
-        .collect();
+                if row == col {
+                    // Diagonal: self-identity is always 1.0
+                    1.0
+                } else if row < col {
+                    // Upper triangle: compute alignment
+                    align(
+                        aligner,
+                        sequences[row].as_bytes(),
+                        sequences[col].as_bytes(),
+                    )
+                } else {
+                    // Lower triangle: placeholder
+                    0.0
+                }
+            })
+            .collect();
+        out_data
+    };
+
+    let out_data = if let Some(n_threads) = num_threads {
+        ThreadPoolBuilder::new()
+            .num_threads(n_threads)
+            .build()
+            .expect("Failed to create thread pool")
+            .install(compute_data)
+    } else {
+        compute_data()
+    };
 
     Array2::from_shape_vec((total_size, total_size), out_data).unwrap()
 }

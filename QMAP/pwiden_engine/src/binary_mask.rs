@@ -4,6 +4,7 @@ use pyo3::types::PyModule;
 use numpy::{IntoPyArray, PyArray1};
 use parasail_rs::{Matrix, Aligner};
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle, ProgressDrawTarget};
 use crate::utils::cache::get_binary_mask_cache_path;
 use crate::utils::alignment::align;
@@ -27,13 +28,14 @@ use crate::utils::alignment::align;
 /// * `gap_extension` - Gap extension penalty (default: 1)
 /// * `use_cache` - Whether to use caching (default: true)
 /// * `show_progress` - Whether to show progress bar (default: true)
+/// * `num_threads` - Number of threads to use (default: None = use all cores)
 ///
 /// # Returns
 ///
 /// A 1D numpy boolean array of length n_train. True indicates the training sequence
 /// should be removed (has identity >= threshold with at least one test sequence).
 #[pyfunction]
-#[pyo3(signature = (train_sequences, test_sequences, threshold=0.3, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true))]
+#[pyo3(signature = (train_sequences, test_sequences, threshold=0.3, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true, num_threads=None))]
 pub fn compute_binary_mask<'py>(
     py: Python<'py>,
     train_sequences: Vec<String>,
@@ -44,6 +46,7 @@ pub fn compute_binary_mask<'py>(
     gap_extension: i32,
     use_cache: bool,
     show_progress: bool,
+    num_threads: Option<usize>,
 ) -> PyResult<Bound<'py, PyArray1<bool>>> {
     // Check cache first if enabled
     if use_cache {
@@ -105,18 +108,31 @@ pub fn compute_binary_mask<'py>(
 
     // Compute mask in parallel: for each training sequence, check if ANY test sequence exceeds threshold
     // Memory-efficient: processes one training sequence at a time, O(n_train) memory
-    let mask: Vec<bool> = train_sequences
-        .par_iter()
-        .progress_with(pb.clone())
-        .map(|train_seq| {
-            // Check if this training sequence is too similar to ANY test sequence
-            let should_remove = test_sequences.iter().any(|test_seq| {
-                let identity = align(&aligner, train_seq.as_bytes(), test_seq.as_bytes());
-                identity >= threshold
-            });
-            should_remove
-        })
-        .collect();
+    let compute_mask = || {
+        let mask: Vec<bool> = train_sequences
+            .par_iter()
+            .progress_with(pb.clone())
+            .map(|train_seq| {
+                // Check if this training sequence is too similar to ANY test sequence
+                let should_remove = test_sequences.iter().any(|test_seq| {
+                    let identity = align(&aligner, train_seq.as_bytes(), test_seq.as_bytes());
+                    identity >= threshold
+                });
+                should_remove
+            })
+            .collect();
+        mask
+    };
+
+    let mask = if let Some(n_threads) = num_threads {
+        ThreadPoolBuilder::new()
+            .num_threads(n_threads)
+            .build()
+            .map_err(|e| PyValueError::new_err(format!("Failed to create thread pool: {}", e)))?
+            .install(compute_mask)
+    } else {
+        compute_mask()
+    };
 
     pb.finish_and_clear();
 
