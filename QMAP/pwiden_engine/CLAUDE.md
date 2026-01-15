@@ -1,0 +1,508 @@
+# CLAUDE.md - pwiden_engine
+
+> **Important:** This file should be kept in sync with README.md. Whenever README.md is modified, CLAUDE.md must also be updated to reflect those changes, particularly regarding features, API changes, and usage instructions.
+
+## Project Overview
+
+**pwiden_engine** is a high-performance Rust library for computing pairwise peptide sequence identity, with Python bindings. It leverages SIMD instructions and multi-threaded parallelization to efficiently calculate identity scores between protein/peptide sequences at scale.
+
+### Purpose
+Enable fast pairwise sequence identity calculations for bioinformatics applications, particularly for:
+- Computing global pairwise identity matrices
+- Generating edge lists for sequence similarity networks
+- Creating binary masks to ensure independent train/test splits in machine learning
+
+### Key Technologies
+- **Language**: Rust (edition 2024)
+- **Python Bindings**: PyO3 + Maturin
+- **Alignment**: parasail-rs (SIMD-optimized Smith-Waterman/Needleman-Wunsch)
+- **Parallelization**: rayon (work-stealing parallelism)
+- **Progress Tracking**: indicatif with rayon integration
+
+## Architecture
+
+### Core Components
+
+1. **Alignment Engine** (`src/lib.rs`)
+   - Uses parasail-rs for SIMD-accelerated sequence alignment
+   - Supports BLOSUM30-100 scoring matrices
+   - Calculates identity as: matches / max(alignment_length, max_sequence_length)
+
+2. **Multi-threading Strategy**
+   - rayon for data parallelism across sequence pairs
+   - Work-stealing scheduler automatically balances load
+   - Progress bars integrated via indicatif's rayon feature
+
+3. **Python Interface**
+   - PyO3 for zero-copy data sharing with Python
+   - Maturin for building Python wheels
+   - Returns numpy-compatible arrays (ndarray)
+
+### Dependencies
+
+```toml
+[dependencies]
+dirs = "6.0.0"              # User cache directory for result caching
+indicatif = "0.18.3"        # Progress bars with rayon support
+ndarray = "0.17.2"          # N-dimensional arrays (numpy compatibility)
+ndarray-npy = "0.10.0"      # Reading/writing .npy files for caching
+numpy = "0.27.1"            # PyO3-numpy integration for array conversion
+parasail-rs = "0.8.1"       # SIMD sequence alignment library
+pyo3 = "0.27.0"             # Python bindings
+rayon = "1.11.0"            # Data parallelism
+sha2 = "0.10.9"             # SHA-256 hashing for cache keys
+```
+
+## Implementation Details
+
+### Current Implementation Status
+
+**Completed:**
+- ✅ `compute_global_identity` function (src/lib.rs:118-221)
+  - Full Python-bindable function using global alignment only
+  - Optimized for symmetric matrices (only computes upper triangle)
+  - Diagonal automatically set to 1.0 (self-identity)
+  - Lower triangle filled by copying from upper triangle (~50% speedup)
+  - Returns numpy arrays directly to Python
+  - Integrated progress bar support
+  - Comprehensive error handling with Python exceptions
+- ✅ `create_edgelist` function (src/lib.rs:223-326)
+  - Creates edgelist from pairwise alignments with threshold filtering
+  - Returns numpy array with [source_id, target_id, identity] columns
+  - Only computes upper triangle (no duplicate edges)
+  - Full caching support with SHA-256 hash-based keys
+  - Automatic cache directory management
+- ✅ `get_cache_dir` function (src/lib.rs:336-341)
+  - Returns system cache directory path for pwiden_engine
+  - Creates directory if it doesn't exist
+- ✅ Caching system (src/lib.rs:14-68)
+  - Uses system cache directory (via `dirs` crate)
+  - SHA-256 hashing of sequences + alignment parameters to avoid collisions
+  - Hash includes: sequences, matrix, gap_open, gap_extension
+  - Separate cache files per parameter combination + threshold
+  - .npy format for efficient storage and loading
+  - Ensures cached results match requested alignment parameters
+- ✅ Alignment function for global mode (src/lib.rs:74-82)
+- ✅ Helper function `compute_upper_triangle_matrix` for code reuse (src/lib.rs:84-139)
+  - Returns NxN matrix with upper triangle computed
+  - Used by both `compute_global_identity` and `create_edgelist`
+  - Memory-efficient approach using matrix instead of storing tuples
+- ✅ PyO3 module with proper numpy integration (src/lib.rs:343-350)
+- ✅ Example usage scripts (`example.py`, `test_edgelist.py`)
+- ✅ Complete CI/CD pipeline for multi-platform wheel building
+
+**Not Yet Implemented:**
+- Local alignment mode (removed in favor of global-only optimization)
+- Binary mask function for train/test splits
+
+### Planned Features (from README.md)
+
+#### 1. Global Identity Matrix ✅ **Implemented**
+- Computes NxN symmetric matrix of pairwise identities
+- Optimizations:
+  - Self-identity automatically set to 1.0 (no alignment needed)
+  - Only upper triangle computed, lower triangle copied (symmetry) - ~50% speedup
+  - Multi-threaded computation across pairs with rayon
+  - Progress bar integrated for user feedback
+
+#### 2. Edgelist Generation ✅ **Implemented**
+- Outputs numpy array with columns: source_id, target_id, identity
+- Only includes pairs where identity >= threshold
+- Only processes upper triangle (avoids duplicates)
+- Supports caching based on SHA-256 sequence hash + threshold
+- Cache files stored in system cache directory
+
+#### 3. Binary Mask for Train/Test Splits
+- Compares all train sequences against all test sequences
+- Marks train sequences for removal if any test sequence exceeds threshold
+- Ensures no data leakage in ML splits
+- Supports caching
+
+### Alignment Algorithm
+
+The `align` function (src/lib.rs:11-18) uses global alignment only:
+
+```rust
+fn align(aligner: &Aligner, seq1: &[u8], seq2: &[u8]) -> f32 {
+    let alignment = aligner.align(Some(seq1), seq2).unwrap();
+    let alignment_len = alignment.get_length().unwrap() as f32;
+    let min_len = max(seq1.len(), seq2.len()) as f32;
+    let total = if alignment_len > min_len {alignment_len} else {min_len};
+
+    alignment.get_matches().unwrap() as f32 / total
+}
+```
+
+**Identity calculation (Global mode):**
+- Numerator: Number of exact matches in alignment
+- Denominator: max(alignment_length, longer_sequence_length)
+- Normalizes by the effective comparison length
+- Best for comparing full-length sequences
+
+**Matrix Computation Optimization:**
+The `compute_global_identity` function optimizes computation by exploiting matrix symmetry:
+```rust
+// Only compute upper triangle and diagonal
+if row == col {
+    1.0  // Self-identity
+} else if row < col {
+    align(&aligner, seq1, seq2)  // Compute alignment
+} else {
+    0.0  // Placeholder for lower triangle
+}
+
+// After parallel computation, copy upper triangle to lower triangle
+for row in 1..n {
+    for col in 0..row {
+        matrix[[row, col]] = matrix[[col, row]];
+    }
+}
+```
+
+This provides approximately **50% speedup** by avoiding redundant alignments.
+
+## Build & Development
+
+### Building the Python Package
+
+```bash
+# Development build
+maturin develop
+
+# Release build
+maturin build --release
+
+# Build wheels for distribution
+maturin build --release --out dist
+```
+
+### Testing Python Scripts
+
+The virtual environment is located in the parent directory (`../.venv`). To run Python test scripts:
+
+```bash
+# Activate the parent venv and run with uv
+source ../.venv/bin/activate && python <file>.py
+
+# Examples:
+source ../.venv/bin/activate && python test_structured_array.py
+source ../.venv/bin/activate && python test_cache_structured.py
+source ../.venv/bin/activate && python example.py
+```
+
+**Note:** The venv is in the parent directory because this is a sub-project within the larger QMAP project.
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions (`.github/workflows/CI.yml`) with maturin:
+- **Platforms**: Linux (x86_64, x86, aarch64, armv7, s390x, ppc64le), Windows (x64, x86, aarch64), macOS (x86_64, aarch64)
+- **Linux variants**: glibc (manylinux) and musl (musllinux)
+- **Release process**: Automatic PyPI publishing on git tags
+- **Artifact attestation**: Build provenance for security
+
+### Python Requirements
+
+- Python >= 3.8
+- Maturin >= 1.11, < 2.0
+- Compatible with CPython and PyPy
+
+## Performance Considerations
+
+### SIMD Optimization
+- parasail-rs automatically selects best SIMD instruction set (SSE2, SSE4.1, AVX2, AVX512)
+- Provides 4-16x speedup over scalar implementations
+
+### Multi-threading
+- rayon spawns threads equal to available CPU cores
+- Work-stealing prevents idle threads
+- Minimal synchronization overhead due to embarrassingly parallel nature
+
+### Caching Strategy
+- Cache location: User's cache directory (`dirs` crate)
+- Cache key: SHA-256 hash of input sequences + alignment parameters
+- Hash includes: sequences, matrix, gap_open, gap_extension
+- Separate cache files for different parameter combinations
+- Avoids recomputation for repeated analyses
+- Ensures cached results match requested parameters
+
+### Memory Efficiency
+- **Upper triangular computation**: Only computes ~50% of alignments (upper triangle + diagonal)
+- **Computation time**: Approximately 50% faster than computing full matrix
+- **Memory usage**: Full NxN matrix still allocated (symmetric storage)
+- PyO3 uses zero-copy sharing where possible
+- ndarray provides efficient memory layout
+
+## Python API
+
+### compute_global_identity (✅ Implemented)
+
+Computes pairwise sequence identity matrix using global alignment. Optimized for symmetric
+matrices by only computing the upper triangle.
+
+**Function signature:**
+```python
+def compute_global_identity(
+    sequences: list[str],
+    matrix: str = "blosum62",
+    gap_open: int = 5,
+    gap_extension: int = 1,
+    show_progress: bool = True
+) -> numpy.ndarray:
+```
+
+**Parameters:**
+- `sequences` (list[str]): List of protein/peptide sequences
+- `matrix` (str): Substitution matrix name (default: "blosum62")
+  - Supported: blosum{30, 35, 40, 45, 50, 55, 60, 62, 65, 70, 75, 80, 85, 90, 95, 100}
+  - Also: pam{10-500} in steps of 10
+- `gap_open` (int): Gap opening penalty (default: 5)
+- `gap_extension` (int): Gap extension penalty (default: 1)
+- `show_progress` (bool): Display progress bar to stderr (default: True)
+
+**Returns:**
+- `numpy.ndarray`: 2D symmetric array of shape (n, n) containing pairwise identity scores (float32)
+
+**Performance optimizations:**
+- Diagonal elements are always 1.0 (no computation needed)
+- Only upper triangle computed (~50% faster)
+- Lower triangle filled by copying from upper triangle
+- Multi-threaded with rayon for parallel alignment computation
+
+**Usage example:**
+```python
+import pwiden_engine
+import numpy as np
+
+sequences = [
+    "ACDEFGHIKLMNPQRSTVWY",
+    "ACDEFGHIKLMNPQRST",
+    "MKTIIALSYIFCLVFA",
+]
+
+# Basic usage with defaults
+identity_matrix = pwiden_engine.compute_global_identity(sequences)
+
+# With custom parameters
+identity_matrix = pwiden_engine.compute_global_identity(
+    sequences,
+    matrix="blosum62",
+    gap_open=5,
+    gap_extension=1,
+    show_progress=True
+)
+
+# The result is a symmetric numpy array
+print(identity_matrix.shape)  # (3, 3)
+print(identity_matrix.mean())  # Mean identity score
+print(np.allclose(identity_matrix, identity_matrix.T))  # True (symmetric)
+print(np.allclose(np.diag(identity_matrix), 1.0))  # True (diagonal is 1.0)
+np.save("identity.npy", identity_matrix)  # Save to file
+```
+
+See `example.py` for a complete working example with symmetry verification.
+
+### create_edgelist (✅ Implemented)
+
+Creates an edgelist from pairwise sequence alignments. Optimized to only compute upper triangle,
+with full caching support using SHA-256 hashing.
+
+**Function signature:**
+```python
+def create_edgelist(
+    sequences: list[str],
+    threshold: float = 0.0,
+    matrix: str = "blosum62",
+    gap_open: int = 5,
+    gap_extension: int = 1,
+    use_cache: bool = True,
+    show_progress: bool = True
+) -> numpy.ndarray:
+```
+
+**Parameters:**
+- `sequences` (list[str]): List of protein/peptide sequences
+- `threshold` (float): Minimum identity threshold (default: 0.0)
+- `matrix` (str): Substitution matrix name (default: "blosum62")
+- `gap_open` (int): Gap opening penalty (default: 5)
+- `gap_extension` (int): Gap extension penalty (default: 1)
+- `use_cache` (bool): Whether to use caching (default: True)
+- `show_progress` (bool): Display progress bar to stderr (default: True)
+
+**Returns:**
+- `numpy.ndarray`: 2D array of shape (n_edges, 3) with dtype float64
+  - Column 0: source sequence index (integer stored as float64, losslessly)
+  - Column 1: target sequence index (integer stored as float64, losslessly)
+  - Column 2: identity score (float64)
+  - Note: float64 can exactly represent integers up to 2^53, sufficient for any practical dataset
+
+**Caching behavior:**
+- Cache key: SHA-256 hash of sequences + matrix + gap_open + gap_extension + threshold
+- Hash computation includes:
+  - All sequences (with null byte delimiters)
+  - Substitution matrix name (as string)
+  - Gap opening penalty (as i32 little-endian bytes)
+  - Gap extension penalty (as i32 little-endian bytes)
+  - Threshold (as part of filename, 4 decimal places)
+- Cache location: System cache directory / pwiden_engine /
+- Cache filename format: `edgelist_{params_hash}_thresh_{threshold}.npy`
+- Automatic cache invalidation when any parameter changes
+- Safe for concurrent access (read-only operations on existing cache)
+
+**Performance optimizations:**
+- Only computes upper triangle (source < target)
+- Multi-threaded with rayon
+- Progress bar shows K units instead of M units (fewer total comparisons)
+
+**Usage example:**
+```python
+import pwiden_engine
+import numpy as np
+
+sequences = [
+    "ACDEFGHIKLMNPQRSTVWY",
+    "ACDEFGHIKLMNPQRST",
+    "MKTIIALSYIFCLVFA",
+]
+
+# First run - computes and caches
+edgelist = pwiden_engine.create_edgelist(
+    sequences,
+    threshold=0.7,
+    use_cache=True,
+    show_progress=True
+)
+
+# Second run - loads from cache (much faster)
+edgelist2 = pwiden_engine.create_edgelist(
+    sequences,
+    threshold=0.7,
+    use_cache=True
+)
+
+# Access edgelist data - Method 1: Direct conversion
+for i in range(edgelist.shape[0]):
+    source = int(edgelist[i, 0])  # Lossless conversion from f64
+    target = int(edgelist[i, 1])  # Lossless conversion from f64
+    identity = edgelist[i, 2]
+    print(f"Seq {source} - Seq {target}: {identity:.3f}")
+
+# Method 2: Vectorized conversion (more efficient for large datasets)
+sources = edgelist[:, 0].astype(np.int64)
+targets = edgelist[:, 1].astype(np.int64)
+identities = edgelist[:, 2]
+```
+
+See `test_edgelist.py` for a complete working example with caching demonstration.
+
+### get_cache_dir (✅ Implemented)
+
+Returns the cache directory path and creates it if it doesn't exist.
+
+**Function signature:**
+```python
+def get_cache_dir() -> str:
+```
+
+**Returns:**
+- `str`: Absolute path to the cache directory
+
+**Usage example:**
+```python
+import pwiden_engine
+
+cache_dir = pwiden_engine.get_cache_dir()
+print(f"Cache directory: {cache_dir}")
+
+# On macOS: /Users/username/Library/Caches/pwiden_engine
+# On Linux: /home/username/.cache/pwiden_engine
+# On Windows: C:\Users\username\AppData\Local\pwiden_engine\cache
+```
+
+### Future Functions (Not Yet Implemented)
+
+```python
+# Binary mask for train/test (planned)
+mask = pwiden_engine.compute_binary_mask(train_sequences, test_sequences, threshold=0.3)
+# Returns: boolean numpy array indicating sequences to remove from train
+```
+
+## Development Notes
+
+### Implementation History
+
+**Completed (January 2026):**
+- ✅ Converted CLI application to Python-bindable function
+- ✅ Implemented `compute_global_identity` with full parameter support
+- ✅ Optimized for symmetric matrices (upper triangle only computation)
+  - Diagonal automatically set to 1.0
+  - Lower triangle filled by copying from upper triangle
+  - ~50% speedup for large matrices
+- ✅ Implemented `create_edgelist` with threshold filtering
+  - Returns numpy array with [source_id, target_id, identity] columns
+  - Uses f64 for all columns (lossless integer storage up to 2^53)
+  - Only computes upper triangle (no duplicate edges)
+  - Refactored code to use shared `compute_upper_triangle_matrix` helper
+  - Memory-efficient: extracts edgelist from NxN matrix rather than storing tuples
+- ✅ Implemented caching system with parameter-aware SHA-256 hashing
+  - Uses system cache directory (via `dirs` crate)
+  - Hash includes all alignment parameters (matrix, gap_open, gap_extension)
+  - Separate cache files per parameter combination + threshold
+  - Automatic cache loading and saving
+  - Low collision probability with SHA-256
+  - Ensures cache correctness by including all parameters in hash
+- ✅ Implemented `get_cache_dir` utility function
+- ✅ Removed local alignment mode in favor of global-only optimization
+- ✅ Integrated progress bar support for Python users
+- ✅ Added comprehensive error handling with Python exceptions
+- ✅ Created working example scripts with caching demonstration (`example.py`, `test_edgelist.py`)
+- ✅ Added numpy integration for seamless array conversion
+
+### TODO Items
+1. ~~Complete `compute_global_identity` function~~ ✅ **Done**
+2. ~~Implement edgelist generation function~~ ✅ **Done**
+3. Implement binary mask function for train/test splits
+4. ~~Add caching layer with hash-based lookup~~ ✅ **Done** (SHA-256)
+5. ~~Add error handling for invalid sequences~~ ✅ **Done** (via PyValueError)
+6. Add benchmarks comparing to pure Python implementations
+7. ~~Document alignment matrix selection guidelines~~ ✅ **Documented in README and CLAUDE.md**
+8. ~~Add examples directory with usage patterns~~ ✅ **Done** (example.py, test_edgelist.py)
+9. Add unit tests for edge cases (empty sequences, invalid characters, etc.)
+10. Optimize memory usage for very large datasets (consider chunking)
+11. Add cache management utilities (clear cache, list cached files, etc.)
+
+### Code Organization Recommendations
+- Separate alignment logic into `src/alignment.rs`
+- Caching utilities in `src/cache.rs`
+- Python bindings in `src/python_interface.rs`
+- Keep `src/lib.rs` as orchestration layer
+
+### Testing Strategy
+- Unit tests for alignment function with known sequence pairs
+- Integration tests for full matrix computation
+- Benchmark suite against baseline implementations
+- Property-based testing for matrix symmetry
+
+## Common Issues & Solutions
+
+### Alignment Matrix Selection
+- **BLOSUM62**: Default, works well for distantly related proteins
+- **BLOSUM80-90**: For closely related sequences
+- **BLOSUM45-50**: For more distant relationships
+
+### Performance Tuning
+- Set `RAYON_NUM_THREADS` to control parallelism
+- For very large datasets, consider batch processing to manage memory
+- Cache results when reusing the same sequence sets
+
+### Building on Different Platforms
+- **macOS**: May need Xcode command line tools
+- **Linux**: Ensure gcc/clang available
+- **Windows**: Requires Visual Studio Build Tools
+
+## References
+
+- [PyO3 Documentation](https://pyo3.rs/)
+- [Maturin Guide](https://www.maturin.rs/)
+- [parasail-rs](https://github.com/jeff-k/parasail-rs)
+- [rayon Documentation](https://docs.rs/rayon/)
+- [ndarray Documentation](https://docs.rs/ndarray/)
