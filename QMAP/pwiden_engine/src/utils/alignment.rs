@@ -67,7 +67,7 @@ pub fn compute_upper_triangle_matrix(
                     )
                 } else {
                     // Lower triangle: placeholder
-                    0.0
+                    -1.
                 }
             })
             .collect();

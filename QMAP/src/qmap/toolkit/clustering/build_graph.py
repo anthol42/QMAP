@@ -12,4 +12,5 @@ def build_graph(sequences: list[str], threshold: float, *args, **kwargs) -> tupl
     :return: The created graph and the edgelist dictionary (source_node, target_node) -> identity_score
     """
     edgelist = create_edgelist(sequences, threshold, *args, **kwargs)
-    return ig.Graph.TupleList(edgelist.keys(), directed=False), edgelist
+    # return ig.Graph.TupleList(edgelist.keys(), directed=False), edgelist
+    return ig.Graph(n=len(sequences), edges=list(edgelist.keys()), directed=False), edgelist

@@ -12,13 +12,13 @@ def train_test_split(sequences: List[str], *metadata: List[Any],
                      random_state: Optional[int] = None,
                      shuffle: bool = True,
                      post_filtering: bool = True,
-                     n_iterations: int = 2,
+                     n_iterations: int = -1,
 
                      matrix: str = "blosum45",
                      gap_open: int = 5,
                      gap_extension: int = 1,
                      use_cache: bool = True,
-                     show_progress: bool = True,
+                     verbose: bool = True,
                      num_threads: Optional[int] = None,
                      ) -> tuple:
     """
@@ -48,7 +48,7 @@ Also: pam{10-500} in steps of 10
     :param gap_open: Gap opening penalty
     :param gap_extension: Gap extension penalty
     :param use_cache: Whether to use caching (default: True)
-    :param show_progress: Whether to show the progress bar and debug logs
+    :param verbose: Whether to show the progress bar and debug logs
     :param num_threads: Number of threads to use for parallel computation (default: None = all available cores)
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
@@ -79,13 +79,13 @@ Also: pam{10-500} in steps of 10
                     gap_open=gap_open,
                     gap_extension=gap_extension,
                     use_cache=use_cache,
-                    show_progress=show_progress,
+                    show_progress=verbose,
                     num_threads=num_threads
                     )
 
-    print(g.vcount()) if show_progress else None
-    print(g.ecount()) if show_progress else None
-    print(f"Sparsity ratio: {100 * g.ecount() / (g.vcount() * (g.vcount() - 1) / 2):.4f}%") if show_progress else None
+    print("Number of node:", g.vcount()) if verbose else None
+    print("Number of edges:", g.ecount()) if verbose else None
+    print(f"Connection ratio: {100 * g.ecount() / (g.vcount() * (g.vcount() - 1) / 2):.4f}%") if verbose else None
 
     # Step 3: Retrieve the clusters
     clusters = leiden_community_detection(g, n_iterations=n_iterations, seed=random_state)
@@ -94,11 +94,11 @@ Also: pam{10-500} in steps of 10
     if random_state is not None:
         np.random.seed(random_state)
 
-    train_ids, test_ids = random_cluster_split(clusters, test_ratio=test_size, verbose=show_progress)
+    train_ids, test_ids = random_cluster_split(clusters, test_ratio=test_size, verbose=verbose)
 
     # Step 4: Post filtering if enabled
     if post_filtering:
-        train_ids = filter_out(train_ids, test_ids, edgelist, verbose=show_progress)
+        train_ids = filter_out(train_ids, test_ids, edgelist, verbose=verbose)
 
     # Step 5: Shuffle the splits if required
     if shuffle:
