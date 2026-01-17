@@ -72,6 +72,15 @@ sha2 = "0.10.9"             # SHA-256 hashing for cache keys
   - Only computes upper triangle (no duplicate edges)
   - Full caching support with SHA-256 hash-based keys
   - Automatic cache directory management
+- ✅ `compute_binary_mask` function
+  - Memory-efficient O(n_train) implementation
+  - SHA-256 hash-based caching with collision prevention
+  - Full parameter support matching other functions
+- ✅ `maximum_identity` function
+  - Computes maximum identity for each test sequence against all training sequences
+  - Returns 1D array of length n_test with max identity scores
+  - Multi-threaded with rayon for parallel processing of test sequences
+  - Full caching support with SHA-256 hash-based keys
 - ✅ `get_cache_dir` function (src/lib.rs:336-341)
   - Returns system cache directory path for pwiden_engine
   - Creates directory if it doesn't exist
@@ -93,7 +102,6 @@ sha2 = "0.10.9"             # SHA-256 hashing for cache keys
 
 **Not Yet Implemented:**
 - Local alignment mode (removed in favor of global-only optimization)
-- Binary mask function for train/test splits
 
 ### Planned Features (from README.md)
 
@@ -119,6 +127,13 @@ sha2 = "0.10.9"             # SHA-256 hashing for cache keys
 - Supports caching with SHA-256 hash-based keys
 - Memory-efficient: O(n_train) memory usage
 - Multi-threaded with configurable thread count
+
+#### 4. Maximum Identity Computation ✅ **Implemented**
+- Computes maximum identity for each test sequence against all training sequences
+- Returns 1D array of length n_test with max identity scores
+- Multi-threaded with rayon for parallel processing of test sequences
+- Supports caching with SHA-256 hash-based keys
+- Useful for finding closest matches and quality control of train/test splits
 
 ### Alignment Algorithm
 
@@ -492,6 +507,107 @@ mask = pwiden_engine.compute_binary_mask(
 filtered_train = [seq for i, seq in enumerate(train_sequences) if not mask[i]]
 ```
 
+### maximum_identity (✅ Implemented)
+
+Computes the maximum pairwise identity for each test sequence against all training sequences.
+For each test sequence, finds the highest identity score when compared against the entire training set.
+
+**Function signature:**
+```python
+def maximum_identity(
+    train_sequences: list[str],
+    test_sequences: list[str],
+    matrix: str = "blosum62",
+    gap_open: int = 5,
+    gap_extension: int = 1,
+    use_cache: bool = True,
+    show_progress: bool = True,
+    num_threads: int | None = None
+) -> numpy.ndarray:
+```
+
+**Parameters:**
+- `train_sequences` (list[str]): List of training sequences
+- `test_sequences` (list[str]): List of test sequences
+- `matrix` (str): Substitution matrix name (default: "blosum62")
+- `gap_open` (int): Gap opening penalty (default: 5)
+- `gap_extension` (int): Gap extension penalty (default: 1)
+- `use_cache` (bool): Whether to use caching (default: True)
+- `show_progress` (bool): Display progress bar to stderr (default: True)
+- `num_threads` (int | None): Number of threads to use for parallel computation (default: None = use all available cores)
+
+**Returns:**
+- `numpy.ndarray`: 1D float32 array of length n_test. Each element contains the maximum identity
+  score for that test sequence when compared against all training sequences.
+
+**Performance optimizations:**
+- Parallelizes across test sequences with rayon
+- Memory-efficient: O(n_test) memory for storing results
+- Multi-threaded processing for fast computation
+- Full caching support with SHA-256 hash-based keys
+
+**Usage example:**
+```python
+import pwiden_engine
+import numpy as np
+
+train_sequences = [
+    "ACDEFGHIKLMNPQRSTVWY",
+    "ACDEFGHIKLMNPQRST",
+    "MKTIIALSYIFCLVFA",
+]
+
+test_sequences = [
+    "ACDEFGHIKLMNPQRS",
+    "MKTIIALSYIFCLVFAGH",
+]
+
+# Compute maximum identity for each test sequence
+max_identities = pwiden_engine.maximum_identity(
+    train_sequences,
+    test_sequences,
+    matrix="blosum62",
+    gap_open=5,
+    gap_extension=1,
+    use_cache=True,
+    show_progress=True,
+    num_threads=4  # Optional: control thread count
+)
+
+# Results show max identity for each test sequence
+print(f"Max identities shape: {max_identities.shape}")  # (2,)
+for i, max_id in enumerate(max_identities):
+    print(f"Test seq {i}: max identity = {max_id:.3f}")
+
+# Find test sequences with high similarity to training data
+threshold = 0.7
+similar_indices = np.where(max_identities >= threshold)[0]
+print(f"Test sequences too similar to training: {similar_indices}")
+
+# Use for quality control of train/test splits
+if np.any(max_identities >= 0.9):
+    print("Warning: Some test sequences are very similar to training data!")
+```
+
+**Use cases:**
+- Find closest training sequence for each test sequence
+- Identify test sequences too similar to training data (potential data leakage)
+- Quality control for train/test splits
+- Similarity-based filtering of test sets
+- Complement to `compute_binary_mask` (provides similarity scores instead of binary mask)
+
+**Caching behavior:**
+- Cache key: SHA-256 hash of train_sequences + test_sequences + matrix + gap_open + gap_extension
+- Cache location: System cache directory / pwiden_engine /
+- Cache filename format: `maximum_identity_{params_hash}.npy`
+- Automatic cache invalidation when any parameter changes
+
+**Comparison with `compute_binary_mask`:**
+- `maximum_identity`: Returns continuous scores (max identity for each test sequence)
+- `compute_binary_mask`: Returns binary mask (which training sequences to remove)
+- `maximum_identity` is more informative but doesn't directly filter training data
+- `compute_binary_mask` is designed specifically for filtering training sets
+
 ## Development Notes
 
 ### Implementation History
@@ -526,13 +642,19 @@ filtered_train = [seq for i, seq in enumerate(train_sequences) if not mask[i]]
   - Memory-efficient O(n_train) implementation
   - SHA-256 hash-based caching with collision prevention
   - Full parameter support matching other functions
+- ✅ Implemented `maximum_identity` function
+  - Computes maximum identity for each test sequence against all training sequences
+  - Returns 1D array of length n_test with max identity scores
+  - Parallelizes across test sequences with rayon
+  - Memory-efficient: O(n_test) memory for storing results
+  - Full caching support with SHA-256 hash-based keys
 - ✅ Added `num_threads` parameter to all parallelized functions
-  - Configurable thread pool size for `compute_global_identity`, `create_edgelist`, and `compute_binary_mask`
+  - Configurable thread pool size for `compute_global_identity`, `create_edgelist`, `compute_binary_mask`, and `maximum_identity`
   - Defaults to using all available cores when not specified
   - Uses rayon ThreadPoolBuilder for thread pool management
 - ✅ Refactored codebase for improved readability
   - Split monolithic lib.rs (620 lines) into modular structure
-  - Each Python function in its own file (global_identity.rs, edgelist.rs, binary_mask.rs)
+  - Each Python function in its own file (global_identity.rs, edgelist.rs, binary_mask.rs, maximum_identity.rs)
   - Utilities organized in utils/ directory (cache.rs, alignment.rs, structured_array.rs)
   - lib.rs reduced to 40 lines as orchestration layer
 

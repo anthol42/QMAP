@@ -104,3 +104,17 @@ pub fn get_binary_mask_cache_path(
     let filename = format!("binary_mask_{}_thresh_{:.4}.npy", params_hash, threshold);
     Ok(cache_dir.join(filename))
 }
+
+/// Get cache file path for max_identity
+pub fn get_max_iden_cache_path(
+    train_seqs: &[String],
+    test_seqs: &[String],
+    matrix: &str,
+    gap_open: i32,
+    gap_extension: i32,
+) -> Result<PathBuf, String> {
+    let cache_dir = get_cache_directory()?;
+    let params_hash = hash_train_test_and_params(train_seqs, test_seqs, matrix, gap_open, gap_extension);
+    let filename = format!("max_iden_{}.npy", params_hash);
+    Ok(cache_dir.join(filename))
+}

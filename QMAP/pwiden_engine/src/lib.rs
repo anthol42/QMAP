@@ -9,10 +9,13 @@ mod global_identity;
 mod edgelist;
 mod binary_mask;
 
+mod maximum_identity;
+
 // Re-export Python functions
 pub use crate::global_identity::compute_global_identity;
 pub use crate::edgelist::create_edgelist;
 pub use crate::binary_mask::compute_binary_mask;
+pub use crate::maximum_identity::compute_maximum_identity;
 
 /// Get the cache directory path for pwiden_engine.
 ///
@@ -35,6 +38,7 @@ fn pwiden_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_global_identity, m)?)?;
     m.add_function(wrap_pyfunction!(create_edgelist, m)?)?;
     m.add_function(wrap_pyfunction!(compute_binary_mask, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_maximum_identity, m)?)?;
     m.add_function(wrap_pyfunction!(get_cache_dir, m)?)?;
     Ok(())
 }

@@ -30,6 +30,7 @@ All features are fully implemented with:
 - ✅ **Global pairwise identity matrix** - Fast symmetric matrix computation with SIMD optimization
 - ✅ **Edge list generation** - Filtered pairwise alignments with threshold and caching support
 - ✅ **Binary mask for train/test splits** - Ensures independent ML splits by identifying similar sequences
+- ✅ **Maximum identity computation** - Find highest similarity between test and training sequences
 - ✅ **Configurable parallelization** - Control thread count with `num_threads` parameter
 - ✅ **SHA-256 caching** - Automatic caching for repeated analyses with parameter-aware cache keys
 
@@ -239,6 +240,80 @@ filtered_train = [seq for i, seq in enumerate(train_sequences) if not mask[i]]
 
 **Example:**
 See `test_compute_binary_mask.py` for comprehensive examples and edge cases.
+
+### maximum_identity
+
+Computes the maximum pairwise identity for each test sequence against all training sequences.
+For each test sequence, finds the highest identity score when compared against the entire training set.
+This is useful for finding the closest match in the training set for each test sequence, or for
+identifying test sequences that are too similar to the training data.
+
+```python
+import pwiden_engine
+
+train_sequences = [
+    "ACDEFGHIKLMNPQRSTVWY",
+    "ACDEFGHIKLMNPQRST",
+    "MKTIIALSYIFCLVFA",
+]
+
+test_sequences = [
+    "ACDEFGHIKLMNPQRS",
+    "MKTIIALSYIFCLVFAGH",
+]
+
+# Compute maximum identity for each test sequence
+max_identities = pwiden_engine.maximum_identity(
+    train_sequences,
+    test_sequences,
+    matrix="blosum62",       # Substitution matrix
+    gap_open=5,              # Gap opening penalty
+    gap_extension=1,         # Gap extension penalty
+    use_cache=True,          # Enable caching (default)
+    show_progress=True,      # Show progress bar
+    num_threads=4            # Use 4 threads (default: None = all cores)
+)
+
+# Results show max identity for each test sequence
+for i, max_id in enumerate(max_identities):
+    print(f"Test seq {i}: max identity = {max_id:.3f}")
+
+# Find test sequences with high similarity to training data
+threshold = 0.7
+similar_indices = [i for i, max_id in enumerate(max_identities) if max_id >= threshold]
+print(f"Test sequences too similar to training: {similar_indices}")
+```
+
+**Parameters:**
+- `train_sequences` (list[str]): List of training sequences
+- `test_sequences` (list[str]): List of test sequences
+- `matrix` (str): Substitution matrix name (default: "blosum62")
+- `gap_open` (int): Gap opening penalty (default: 5)
+- `gap_extension` (int): Gap extension penalty (default: 1)
+- `use_cache` (bool): Whether to use caching (default: True)
+- `show_progress` (bool): Whether to show progress bar (default: True)
+- `num_threads` (int | None): Number of threads to use for parallel computation (default: None = all available cores)
+
+**Returns:**
+- `numpy.ndarray`: 1D float32 array of length n_test. Each element contains the maximum identity
+  score for that test sequence when compared against all training sequences.
+
+**Caching:**
+- Cache files are stored in the system cache directory under `pwiden_engine/`
+- Cache key is SHA-256 hash of: train_sequences + test_sequences + matrix + gap_open + gap_extension
+- Cached results are automatically loaded if available
+
+**Performance:**
+- Parallelizes across test sequences
+- Memory-efficient: O(n_test) memory for storing results
+- Multi-threaded with rayon for parallel processing of test sequences
+- Progress bar shows test sequences processed
+
+**Use cases:**
+- Find closest training sequence for each test sequence
+- Identify test sequences too similar to training data (potential data leakage)
+- Quality control for train/test splits
+- Similarity-based filtering of test sets
 
 ### get_cache_dir
 

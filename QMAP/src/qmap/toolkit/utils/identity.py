@@ -1,8 +1,11 @@
 import os
 import hashlib
 import numpy as np
+import numpy.typing as npt
+from typing import Optional
 from ..aligner import compute_global_identity
 from tqdm import tqdm
+import pwiden_engine as pe
 
 
 def _hash_sequences(sequences: list[str]) -> str:
@@ -50,22 +53,36 @@ class Identity:
 
 
 
-
-def compute_maximum_identity(train_ids: list[int], test_ids: list[int], identity_calculator: Identity, threshold: float) -> tuple[np.ndarray, np.ndarray]:
+def compute_maximum_identity(train_sequences: list[str],
+                             test_sequences: list[str],
+                            matrix: str = "blosum45",
+                            gap_open: int = 5,
+                            gap_extension: int = 1,
+                            use_cache: bool = True,
+                            show_progress: bool = True,
+                            num_threads: Optional[int] = None,
+                             ) -> npt.NDArray[np.float32]:
     """
-    Computes the identity statistics between the training and test sets.
-    :param train_ids: List of sequence IDs in the training set.
-    :param test_ids: List of sequence IDs in the test set.
-    :param identity_calculator: Identity calculator.
-    :param threshold: Identity threshold.
-    :return: An array containing the highest identity between each test samples and a mask of the true independent train samples.
+    Use the pwiden engine to quickly compute the maximum identity metri distribution between the training and test sets.
+    :param train_sequences: The training sequences.
+    :param test_sequences: The test sequences.
+    :param matrix: Substitution matrix name (default: "blosum45")
+Supported: blosum{30, 35, 40, 45, 50, 55, 60, 62, 65, 70, 75, 80, 85, 90, 95, 100}
+Also: pam{10-500} in steps of 10
+    :param gap_open: Gap opening penalty
+    :param gap_extension: Gap extension penalty
+    :param use_cache: Whether to use caching (default: True)
+    :param show_progress: Whether to show progress bar
+    :param num_threads: Number of threads to use for parallel computation (default: None = all available cores)
+    :return: The maximum identity vector, the same length as the test set.
     """
-    identities = np.full((len(test_ids), len(train_ids)), np.nan)
-    true_train_set_mask = np.ones(len(train_ids), dtype=bool)
-    for i, test_id in enumerate(tqdm(test_ids)):
-        for j, train_id in enumerate(train_ids):
-            identity = identity_calculator.align_by_id(train_id, test_id)
-            if identity > threshold:
-                true_train_set_mask[j] = False
-            identities[i, j] = identity
-    return identities, true_train_set_mask
+    return pe.compute_maximum_identity(
+        train_sequences,
+        test_sequences,
+        matrix,
+        gap_open,
+        gap_extension,
+        use_cache,
+        show_progress,
+        num_threads
+    )
