@@ -51,7 +51,7 @@ pub fn get_edgelist_cache_path(
 ) -> Result<PathBuf, String> {
     let cache_dir = get_cache_directory()?;
     let params_hash = hash_sequences_and_params(sequences, matrix, gap_open, gap_extension);
-    let filename = format!("edgelist_{}_thresh_{:.4}.npy", params_hash, threshold);
+    let filename = format!("edgelist_{}_thresh_{:.4}.bin", params_hash, threshold);
     Ok(cache_dir.join(filename))
 }
 

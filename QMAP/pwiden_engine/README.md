@@ -112,7 +112,7 @@ See `example.py` for a complete working example with symmetry verification.
 ### create_edgelist
 
 Creates an edgelist from pairwise sequence alignments. Only includes edges where identity >= threshold.
-Returns a numpy array with columns: [source_id, target_id, identity]. Only upper triangle edges are
+Returns a dictionary with keys: (source_id, target_id) and value: identity. Only upper triangle edges are
 included (no duplicates). Supports caching for faster repeated analyses.
 
 ```python
@@ -158,10 +158,10 @@ for edge in edgelist:
 - `num_threads` (int | None): Number of threads to use for parallel computation (default: None = all available cores)
 
 **Returns:**
-- `numpy.ndarray`: 1D structured array of shape (n_edges,) with dtype `[('source', '<u4'), ('target', '<u4'), ('identity', '<f4')]`
-  - `source` field: uint32 - source sequence index (0 to 4,294,967,295)
-  - `target` field: uint32 - target sequence index (0 to 4,294,967,295)
-  - `identity` field: float32 - identity score
+- `dict`: Dictionary of length (n_edges,) with dtype `[('source', 'int'), ('target', 'int'), ('identity', 'float')]`
+  - `source` field: int - source sequence index 
+  - `target` field: int - target sequence index
+  - `identity` field: float - identity score
 
 **Caching:**
 - Cache files are stored in the system cache directory under `pwiden_engine/`

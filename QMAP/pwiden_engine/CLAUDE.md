@@ -335,11 +335,10 @@ def create_edgelist(
 - `num_threads` (int | None): Number of threads to use for parallel computation (default: None = use all available cores)
 
 **Returns:**
-- `numpy.ndarray`: 2D array of shape (n_edges, 3) with dtype float64
-  - Column 0: source sequence index (integer stored as float64, losslessly)
-  - Column 1: target sequence index (integer stored as float64, losslessly)
-  - Column 2: identity score (float64)
-  - Note: float64 can exactly represent integers up to 2^53, sufficient for any practical dataset
+- `dict`: Dictionary of length (n_edges,) with dtype `[('source', 'int'), ('target', 'int'), ('identity', 'float')]`
+  - `source` field: int - source sequence index
+  - `target` field: int - target sequence index
+  - `identity` field: float - identity score
 
 **Caching behavior:**
 - Cache key: SHA-256 hash of sequences + matrix + gap_open + gap_extension + threshold
@@ -350,7 +349,7 @@ def create_edgelist(
   - Gap extension penalty (as i32 little-endian bytes)
   - Threshold (as part of filename, 4 decimal places)
 - Cache location: System cache directory / pwiden_engine /
-- Cache filename format: `edgelist_{params_hash}_thresh_{threshold}.npy`
+- Cache filename format (Using bincode): `edgelist_{params_hash}_thresh_{threshold}.bin`
 - Automatic cache invalidation when any parameter changes
 - Safe for concurrent access (read-only operations on existing cache)
 

@@ -1,19 +1,22 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::PyModule;
 use parasail_rs::{Matrix, Aligner};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use indicatif::{ProgressBar, ProgressStyle, ProgressDrawTarget, ProgressState};
+use std::collections::BTreeMap;
+use std::fs;
 use crate::utils::cache::get_edgelist_cache_path;
 use crate::utils::alignment::align;
-use crate::utils::structured_array::create_structured_array_from_vecs;
 
 /// Creates an edgelist from pairwise sequence alignments.
 ///
-/// Only includes pairs where identity >= threshold. Returns a numpy structured array
-/// with fields: source (u32), target (u32), identity (f32).
+/// Only includes pairs where identity >= threshold. Returns a BTreeMap with
+/// (source, target) tuples as keys and identity scores as values.
 /// Only upper triangle is considered (no duplicate edges).
+///
+/// The BTreeMap maintains keys in sorted order, ensuring deterministic iteration
+/// and consistent serialization (e.g., when pickling in Python).
 ///
 /// This implementation is memory-efficient: it computes alignments on-demand
 /// and immediately filters by threshold, avoiding creation of a full NxN matrix.
@@ -31,14 +34,15 @@ use crate::utils::structured_array::create_structured_array_from_vecs;
 ///
 /// # Returns
 ///
-/// A 1D numpy structured array with dtype [('source', '<u4'), ('target', '<u4'), ('identity', '<f4')]
-/// - source: u32 - source sequence index (0 to 4,294,967,295)
-/// - target: u32 - target sequence index (0 to 4,294,967,295)
-/// - identity: f32 - sequence identity score
+/// A BTreeMap<(i32, i32), f32> where:
+/// - Key: (source, target) tuple of sequence indices (sorted)
+/// - Value: identity score (0.0 to 1.0)
 #[pyfunction]
-#[pyo3(signature = (sequences, threshold=0.0, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true, num_threads=None))]
-pub fn create_edgelist<'py>(
-    py: Python<'py>,
+#[pyo3(
+    signature = (sequences, threshold=0.0, matrix="blosum62", gap_open=5, gap_extension=1, use_cache=true, show_progress=true, num_threads=None),
+    text_signature = "(sequences: list[str], threshold: float = 0.0, matrix: str = 'blosum62', gap_open: int = 5, gap_extension: int = 1, use_cache: bool = True, show_progress: bool = True, num_threads: int | None = None) -> dict[tuple[int, int], float]"
+)]
+pub fn create_edgelist(
     sequences: Vec<String>,
     threshold: f32,
     matrix: &str,
@@ -47,23 +51,31 @@ pub fn create_edgelist<'py>(
     use_cache: bool,
     show_progress: bool,
     num_threads: Option<usize>,
-) -> PyResult<Bound<'py, PyAny>> {
+) -> PyResult<BTreeMap<(i32, i32), f32>> {
     // Check cache first if enabled
     if use_cache {
         if let Ok(cache_path) = get_edgelist_cache_path(&sequences, threshold, matrix, gap_open, gap_extension) {
             if cache_path.exists() {
-                // Try to load using numpy's load function to preserve structured array
-                let np = PyModule::import(py, "numpy")?;
-                match np.getattr("load")?.call1((cache_path.to_str().unwrap(),)) {
-                    Ok(cached_array) => {
-                        if show_progress {
-                            eprintln!("Loaded edgelist from cache: {}", cache_path.display());
+                // Try to load using bincode
+                match fs::read(&cache_path) {
+                    Ok(bytes) => {
+                        match bincode::deserialize::<BTreeMap<(i32, i32), f32>>(&bytes) {
+                            Ok(cached_map) => {
+                                if show_progress {
+                                    eprintln!("Loaded edgelist from cache: {}", cache_path.display());
+                                }
+                                return Ok(cached_map);
+                            }
+                            Err(e) => {
+                                if show_progress {
+                                    eprintln!("Warning: Failed to deserialize cache, recomputing: {}", e);
+                                }
+                            }
                         }
-                        return Ok(cached_array);
                     }
                     Err(e) => {
                         if show_progress {
-                            eprintln!("Warning: Failed to load cache, recomputing: {}", e);
+                            eprintln!("Warning: Failed to read cache file, recomputing: {}", e);
                         }
                     }
                 }
@@ -113,11 +125,11 @@ pub fn create_edgelist<'py>(
     // Compute alignments in parallel, filter by threshold immediately
     // Only process upper triangle pairs (row < col)
     let compute_edgelist = || {
-        let edgelist: Vec<(usize, usize, f32)> = (0..n)
+        let edgelist: Vec<((i32, i32), f32)> = (0..n)
             .into_par_iter()
             .flat_map(|row| {
                 let local_pb = pb.clone();
-                let results: Vec<(usize, usize, f32)> = ((row + 1)..n)
+                let results: Vec<((i32, i32), f32)> = ((row + 1)..n)
                     .filter_map(|col| {
                         let identity = align(
                             &aligner,
@@ -127,7 +139,7 @@ pub fn create_edgelist<'py>(
                         local_pb.inc(1);
 
                         if identity >= threshold {
-                            Some((row, col, identity))
+                            Some(((row as i32, col as i32), identity))
                         } else {
                             None
                         }
@@ -151,35 +163,31 @@ pub fn create_edgelist<'py>(
 
     pb.finish_and_clear();
 
-    // Separate into vectors for structured array
-    let n_edges = edgelist.len();
-    let mut sources = Vec::with_capacity(n_edges);
-    let mut targets = Vec::with_capacity(n_edges);
-    let mut identities = Vec::with_capacity(n_edges);
-
-    for (source, target, identity) in &edgelist {
-        sources.push(*source as u32);
-        targets.push(*target as u32);
-        identities.push(*identity);
-    }
-
-    // Create structured array
-    let result = create_structured_array_from_vecs(py, sources, targets, identities)?;
+    // Convert Vec to BTreeMap (automatically sorted by key)
+    let result: BTreeMap<(i32, i32), f32> = edgelist.into_iter().collect();
 
     // Save to cache if enabled
     if use_cache {
         if let Ok(cache_path) = get_edgelist_cache_path(&sequences, threshold, matrix, gap_open, gap_extension) {
-            // Use numpy's save function to preserve structured array dtype
-            let np = PyModule::import(py, "numpy")?;
-            match np.getattr("save")?.call1((cache_path.to_str().unwrap(), &result)) {
-                Ok(_) => {
-                    if show_progress {
-                        eprintln!("Saved edgelist to cache: {}", cache_path.display());
+            // Serialize using bincode
+            match bincode::serialize(&result) {
+                Ok(bytes) => {
+                    match fs::write(&cache_path, bytes) {
+                        Ok(_) => {
+                            if show_progress {
+                                eprintln!("Saved edgelist to cache: {}", cache_path.display());
+                            }
+                        }
+                        Err(e) => {
+                            if show_progress {
+                                eprintln!("Warning: Failed to write cache file: {}", e);
+                            }
+                        }
                     }
                 }
                 Err(e) => {
                     if show_progress {
-                        eprintln!("Warning: Failed to write cache: {}", e);
+                        eprintln!("Warning: Failed to serialize cache: {}", e);
                     }
                 }
             }
