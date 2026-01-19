@@ -17,9 +17,9 @@ dependencies = [
     "biopython>=1.85",
     "pandas>=2.3.0",
     "tqdm>=4.67.1",
-    "qmap-benchmark",
     "ete4>=4.4.0",
+    "qmap-benchmark",
 ]
 
 [tool.uv.sources]
-qmap-benchmark = { path = "../QMAP", editable = true }
+qmap-benchmark = { path = "../QMAP" }
