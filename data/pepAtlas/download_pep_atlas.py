@@ -7,7 +7,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from warnings import warn
 from glob import glob
-from utils import low_complexity_sequence_generator, high_complexity_sequence_generator, sequence_entropy
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -154,28 +153,9 @@ def make_dataset():
         for i, sequence in enumerate(all_sequences):
             f.write(f'>seq_{i}\n{sequence}\n')
 
-    # Add the synthetic sequences to the dataset
-    # Low complexity sequences
-    for i, seq in tqdm(enumerate(low_complexity_sequence_generator(num_subsequences=3)), desc="Low complexity sequences", total=int(1.75e6 + 2)):
-        all_sequences.add(seq)
-        if i > 1_750_000:
-            break
-
-    # High complexity sequences
-    for i, seq in tqdm(enumerate(high_complexity_sequence_generator()), desc="High complexity sequences", total=int(500_002)):
-        complexity = sequence_entropy(seq)
-        if complexity > 3.9:
-            all_sequences.add(seq)
-        if i > 500_000:
-            break
-
-    # Write to a new fasta file
-    with open('.cache/peptide_atlas_synt.fasta', 'w') as f:
-        for i, sequence in enumerate(all_sequences):
-            f.write(f'>seq_{i}\n{sequence}\n')
-
-    print("Total dataset size:", len(all_sequences)) # 3569085
 if __name__ == '__main__':
+    # Change working directory to the parent directory of the script
+    os.chdir("/".join(os.path.dirname(os.path.abspath(__file__)).split('/')[:-1]))
     builds = fetch_list()[["Build Name", "Peptide Sequences"]]
     # Keep only most recents
     builds = builds.loc[builds['Build Name'] != ""]

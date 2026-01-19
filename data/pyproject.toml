@@ -22,5 +22,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-qmap = { path = "../QMAP", editable = true }
-qmap-benchmark = { path = "../QMAP" }
+qmap-benchmark = { path = "../QMAP", editable = true }
