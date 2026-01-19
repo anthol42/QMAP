@@ -118,3 +118,19 @@ def filter_bond(allowed_bond_types: list[Literal['DSB', 'AMD', None]]):
                 return False
         return True
     return filter_fn
+
+def filter_length_range(min_length: Optional[int], max_length: Optional[int]):
+    """
+    Keep only the samples that have a sequence length within the given range [min_length, max_length].
+    If min_length is None, there is no minimum length constraint.
+    If max_length is None, there is no maximum length constraint.
+    """
+    def filter_fn(sample: Sample) -> bool:
+        min_length_respected = True
+        max_length_respected = True
+        if min_length is not None:
+            min_length_respected = len(sample.sequence) >= min_length
+        if max_length is not None:
+            max_length_respected = len(sample.sequence) <= max_length
+        return min_length_respected and max_length_respected
+    return filter_fn

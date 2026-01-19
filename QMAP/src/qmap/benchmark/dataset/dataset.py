@@ -15,7 +15,7 @@ from .metrics import r2_score
 from .hemolytic import HemolyticActivity
 from .QMAP_metrics import QMAPRegressionMetrics
 from .filters import (filter_bacteria, filter_efficiency_below, filter_hc50, filter_canonical_only,
-                      filter_common_only, filter_l_aa_only, filter_terminal_modification, filter_bond)
+                      filter_common_only, filter_l_aa_only, filter_terminal_modification, filter_bond, filter_length_range)
 
 
 def _format_sample_line(sample: Sample) -> str:
@@ -385,6 +385,13 @@ class DBAASPDataset:
         """
         return self.filter(filter_bond(bond_type))
 
+    def with_length_range(self, min_length: Optional[int], max_length: Optional[int]) -> 'DBAASPDataset':
+        """
+        Keep only samples that have a sequence length within the specified range.
+        :param min_length: Minimum length of the sequence. If None, no minimum length is enforced.
+        :param max_length: Maximum length of the sequence. If None, no maximum length is enforced.
+        """
+        return self.filter(filter_length_range(min_length, max_length))
 
     def _regression_metrics(self, predictions: np.ndarray, targets: np.ndarray, property_name: str, log: bool = True) -> QMAPRegressionMetrics:
         """
