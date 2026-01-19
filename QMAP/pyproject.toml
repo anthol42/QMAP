@@ -5,16 +5,12 @@ description = "Benchmark for AMP MIC regression and toxicity prediction with a T
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "antho-utils>=0.1.0",
-    "graph-part>=1.0.2",
     "huggingface-hub>=0.34.3",
     "igraph>=0.11.9",
     "leidenalg>=0.10.2",
     "numpy>=1.22",
     "pandas>=1.4",
-    "safetensors>=0.5.3",
     "scipy>=1.10.1",
-    "torch>=2.2",
 ]
 keywords = ["qmap", "protein", "clustering", "sequence", "database", "machine learning", "deep learning"]
 

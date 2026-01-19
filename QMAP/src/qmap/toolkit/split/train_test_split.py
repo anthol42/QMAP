@@ -4,8 +4,9 @@ import numpy as np
 from .random_cluster_split import random_cluster_split
 from .filtering import filter_out
 from ..clustering import build_graph, leiden_community_detection
+from ...benchmark.dataset import DBAASPDataset
 
-def train_test_split(sequences: List[str], *metadata: List[Any],
+def train_test_split(sequences: Union[List[str], DBAASPDataset], *metadata: List[Any],
                      threshold: float = 0.60,
                      test_size: Union[float, int] = 0.2,
                      train_size: Optional[Union[float, int]] = None,
@@ -71,6 +72,11 @@ Also: pam{10-500} in steps of 10
     elif isinstance(test_size, int):
         test_size = test_size / len(sequences)
 
+    if isinstance(sequences, DBAASPDataset):
+        dataset = sequences
+        sequences = [sample.sequence for sample in sequences]
+    else:
+        dataset = None
 
     # Step 2: Build the graph
     g, edgelist = build_graph(sequences,
@@ -132,4 +138,10 @@ Also: pam{10-500} in steps of 10
         else:
             split_metadata.extend([train_metadata[i], test_metadata[i]])
 
-    return train_sequences, test_sequences, *split_metadata
+    # Convert back to DBAASPDataset if needed
+    if dataset is not None:
+        train_dataset = dataset[train_ids]
+        test_dataset = dataset[test_ids]
+        return train_dataset, test_dataset, split_metadata
+    else:
+        return train_sequences, test_sequences, *split_metadata
