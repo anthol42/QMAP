@@ -11,7 +11,7 @@ from typing import List
 def generate_esm2_embeddings(protein_sequences: List[str],
                              model_name: str = "facebook/esm2_t33_650M_UR50D",
                              device: str = None,
-                             batch_size: int = 512) -> np.ndarray:
+                             batch_size: int = 128) -> np.ndarray:
     """
     Generate protein embeddings using ESM2 model with mean pooling.
 
