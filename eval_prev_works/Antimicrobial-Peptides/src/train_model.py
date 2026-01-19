@@ -115,14 +115,15 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
 
     # Make the train set
     all_results = []
-    all_results_high_complexity = []
-    all_results_low_complexity = []
     all_results_high_eff = []
     for i in range(5):
         print(f'{Colors.orange}Running split {i}{Colors.reset}')
-        benchmark = QMAPBenchmark(i,
-                                  species_subset=['Escherichia coli'],
-                                  )
+        benchmark = (QMAPBenchmark(i)
+                         .with_bacterial_targets(["Escherichia coli"])
+                         .with_canonical_only()
+                         .with_l_aa_only()
+                         .with_terminal_modification(False, False)
+                         )
         x = np.array(list(bacterium_df.vector.values))
         y = bacterium_df.value.values
 
@@ -133,46 +134,35 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
         train_y = y[mask]
         train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
 
-        test_x, test_y = benchmark.inputs, benchmark.targets
+        test_x, test_y = benchmark.tabular(["sequence"])["sequence"].tolist(), np.log10(benchmark.tabular(["Escherichia coli"])["Escherichia coli"].values)
         test_x = np.array([sequence_to_vector(seq) for seq in test_x])
 
         model = conv_model()
         model.fit(train_x, train_y, epochs=epochs)
         print(f"{Colors.green}Avg. MIC error (correctly classified, active only, all)")
         print(evaluate(model, test_x, test_y))
-        preds = model.predict(test_x)
-        results = benchmark.compute_metrics(preds)
+        preds = model.predict(test_x)[:, 0]
+        preds = [{'Escherichia coli': val.item()} for val in preds]
+        results = benchmark.compute_metrics(preds)["Escherichia coli"]
         all_results.append(results)
         print(results)
         print(Colors.reset)
 
-        high_comp_benchmark = benchmark.high_complexity
-        test_x = np.array([sequence_to_vector(seq) for seq in high_comp_benchmark.inputs])
-        preds = model.predict(test_x)
-        all_results_high_complexity.append(high_comp_benchmark.compute_metrics(preds))
 
-        low_comp_benchmark = benchmark.low_complexity
-        test_x = np.array([sequence_to_vector(seq) for seq in low_comp_benchmark.inputs])
-        preds = model.predict(test_x)
-        all_results_low_complexity.append(low_comp_benchmark.compute_metrics(preds))
-
-        high_eff_benchmark = benchmark.high_efficiency
-        test_x = np.array([sequence_to_vector(seq) for seq in high_eff_benchmark.inputs])
-        preds = model.predict(test_x)
-        all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds))
+        high_eff_benchmark = benchmark.with_efficiency_below(10.)
+        test_x = np.array([sequence_to_vector(seq) for seq in high_eff_benchmark.tabular(["sequence"])["sequence"].tolist()])
+        preds = model.predict(test_x)[:, 0]
+        preds = [{'Escherichia coli': val.item()} for val in preds]
+        all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
 
 
     all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
-    high_complexity = pd.DataFrame([result.dict() for result in all_results_high_complexity])
-    low_complexity = pd.DataFrame([result.dict() for result in all_results_low_complexity])
     high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
 
     # Export to pandas
     if not os.path.exists('results'):
         os.makedirs('results')
     all_result_table.to_csv('results/full.csv')
-    high_complexity.to_csv('results/high_complexity.csv')
-    low_complexity.to_csv('results/low_complexity.csv')
     high_efficiency.to_csv('results/high_efficiency.csv')
 
     print(all_results[0].md_col, end="")

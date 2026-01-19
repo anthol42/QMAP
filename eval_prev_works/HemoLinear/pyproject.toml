@@ -6,11 +6,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "antho-utils>=0.1.0",
-    "qmap",
+    "qmap-benchmark",
     "scikit-learn>=1.7.1",
     "torch>=2.8.0",
     "transformers>=4.55.1",
 ]
 
 [tool.uv.sources]
-qmap = { path = "../../QMAP", editable = true }
+qmap-benchmark = { path = "../../QMAP" }
