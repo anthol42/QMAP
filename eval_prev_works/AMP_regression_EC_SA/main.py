@@ -53,7 +53,12 @@ if __name__ == '__main__':
 
         train_data = pd.read_csv(full_path)
         for split in range(5):
-            benchmark = QMAPBenchmark(split).with_bacterial_targets(["Escherichia coli"])
+            benchmark = (QMAPBenchmark(split)
+                         .with_bacterial_targets(["Escherichia coli"])
+                         .with_canonical_only()
+                         .with_l_aa_only()
+                         .with_terminal_modification(False, False)
+                         )
             test_x = benchmark.tabular(["sequence"])["sequence"].tolist()
             test_y = -np.log10(benchmark.tabular(["Escherichia coli"]).values.reshape(-1))
             test_data = pd.DataFrame(dict(SEQUENCE_space=[" ".join(seq) for seq in test_x], EC_pMIC=test_y))

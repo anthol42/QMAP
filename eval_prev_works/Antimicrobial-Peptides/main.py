@@ -5,8 +5,8 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--bacterium', type=str, default='E. coli', help='Name of bacterium, in single quotes')
-    parser.add_argument('--negatives', type=float, default=1, help='Ratio of negatives to positives')
-    parser.add_argument('--epochs', type=int, default=2)
+    parser.add_argument('--negatives', type=float, default=0, help='Ratio of negatives to positives')
+    parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--option', type=str, default='qmap')
     args = parser.parse_args()
     if args.option == 'qmap':
