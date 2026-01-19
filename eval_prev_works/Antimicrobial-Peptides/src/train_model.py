@@ -123,6 +123,7 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
                          .with_canonical_only()
                          .with_l_aa_only()
                          .with_terminal_modification(False, False)
+                         .with_length_range(None, 100)
                          )
         x = np.array(list(bacterium_df.vector.values))
         y = bacterium_df.value.values

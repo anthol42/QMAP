@@ -58,6 +58,7 @@ if __name__ == '__main__':
                          .with_canonical_only()
                          .with_l_aa_only()
                          .with_terminal_modification(False, False)
+                         .with_length_range(None, 100)
                          )
             test_x = benchmark.tabular(["sequence"])["sequence"].tolist()
             test_y = -np.log10(benchmark.tabular(["Escherichia coli"]).values.reshape(-1))

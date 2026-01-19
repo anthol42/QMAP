@@ -34,6 +34,7 @@ if __name__ == "__main__":
                      .with_canonical_only()
                      .with_l_aa_only()
                      .with_terminal_modification(False, False)
+                     .with_length_range(None, 100)
                      )
         mask = benchmark.get_train_mask(sequences)
         X_train = embeddings[mask]

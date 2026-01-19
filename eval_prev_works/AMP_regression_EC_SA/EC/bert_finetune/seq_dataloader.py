@@ -5,7 +5,7 @@ from transformers import BertTokenizer, get_linear_schedule_with_warmup
 
 d_model = 1024
 batch_size = 8
-MAX_LEN = 77
+MAX_LEN = 100
 tokenizer = BertTokenizer.from_pretrained("Rostlab/prot_bert", do_lower_case=False )
 
 largest_MIC = 10000; def_bias = 4.0; def_scale = 1/6;
