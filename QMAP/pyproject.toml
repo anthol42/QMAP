@@ -22,6 +22,7 @@ build-backend = "maturin"
 # Include Python source files in addition to the Rust extension
 python-source = "src"
 python-packages = ["qmap"]
+profile = "release"
 
 [dependency-groups]
 dev = [

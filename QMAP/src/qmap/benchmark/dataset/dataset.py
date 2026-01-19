@@ -1,12 +1,21 @@
+from scipy.stats import spearmanr, kendalltau, pearsonr
+from typing import Callable, Optional, Literal, Union
+from huggingface_hub import hf_hub_download
+from collections import defaultdict
 import pandas as pd
 import numpy as np
-from typing import Callable, Optional, Literal, Union
-from .sample import Sample
+import json
+import math
+
 from .bond import Bond
+from .sample import Sample
 from .target import Target
+from .metrics import r2_score
 from .hemolytic import HemolyticActivity
+from .QMAP_metrics import QMAPRegressionMetrics
 from .filters import (filter_bacteria, filter_efficiency_below, filter_hc50, filter_canonical_only,
                       filter_common_only, filter_l_aa_only, filter_terminal_modification, filter_bond)
+
 
 def _format_sample_line(sample: Sample) -> str:
     free_str = 'Free'
@@ -40,7 +49,7 @@ class DBAASPDataset:
     boolean_indexed_samples = dataset[np.array([True, False, True, False, ...])]
     only_certain_samples = dataset[[0, 2, 5, 7]]
     """
-    def __init__(self, data: list[dict]):
+    def __init__(self, data: Optional[list[dict]] = None):
         """
         When constructing the dataset from raw data, the data should be a list of dictionaries with the following format:
         {
@@ -53,7 +62,18 @@ class DBAASPDataset:
             'targets': dict[str, tuple[float, float, float]],
             'hemolytic_hc50': Optional[tuple[float, float, float]]
         }
+
+        If data is None, it loads the dataset from HuggingFace Hub.
         """
+        if data is None:
+            path = hf_hub_download(
+                repo_id="anthol42/qmap_benchmark_2025",
+                filename="dbaasp.json",
+                repo_type="dataset"
+            )
+
+            with open(path, 'r') as f:
+                data = json.load(f)
         self.samples = [Sample.FromDict(sample_data) for sample_data in data]
 
     @property
@@ -160,6 +180,82 @@ class DBAASPDataset:
     def __add__(self, other):
         return self.extend(other)
 
+    def compute_metrics(self, predictions: list[dict[str, float]], log: bool = True, mean_metrics: bool = True) -> dict[str, QMAPRegressionMetrics]:
+        """
+        Compute metrics on the dataset given the predictions. The predictions must be in a specific format:
+
+        A list of dictionaries, where each dictionary corresponds to the prediction for a sample, and each key in the
+        dictionary is associated to a property name. These keys can be any bacterial target name, or hc50 for
+        hemolytic activity. If a label exist for the sample and the property, it will be used to compute the metrics.
+        Otherwise, the prediction is ignored. Please, make sure that all the keys do exist, otherwise the function will
+        fail silently by returning nan metrics for this property.
+
+        > **IMPORTANT:**
+        > The order of the predictions must match the order of the samples in the dataset.
+        > Thus, the length of the predictions list must be equal to the length of the dataset.
+
+        :param predictions: The predictions to evaluate.
+        :param log: If True, apply a log10 on the targets before computing the metrics. This means that the prediction
+        are made in the log form. This is recommended.
+        :param mean_metrics: If True, a key will be added to the output containing the mean metrics across all
+        properties. The key is named 'mean'.
+        :return: A dictionary of QMAPMetrics objects, one for each property predicted. The key is the property name,
+        and the value the set of metrics.
+        """
+        if len(predictions) != len(self):
+            raise ValueError("The length of the predictions must be equal to the length of the dataset.")
+
+        all_preds= defaultdict(list)
+        all_targets = defaultdict(list)
+        for sample, pred in zip(self.samples, predictions):
+            if not isinstance(pred, dict):
+                raise ValueError("Each prediction must be a dictionary mapping property names to predicted values.")
+            # Gather predictions and true values for each property
+            for key, value in pred.items():
+                if key == "hc50" and not math.isnan(sample.hc50.consensus):
+                    all_targets["hc50"].append(sample.hc50.consensus)
+                    all_preds["hc50"].append(sample.hc50.consensus)
+                elif key in sample.targets:
+                    all_targets[key].append(sample.targets[key].consensus)
+                    all_preds[key].append(value)
+
+        assert all_preds.keys() == all_targets.keys(), "All keys should be the same"
+        for key in all_preds.keys():
+            assert len(all_preds[key]) == len(all_targets[key]), f"All lengths should be the same, found different lengths for key {key} ({len(all_preds[key])} != {len(all_targets[key])})"
+
+        all_metrics = {}
+        for key in all_preds.keys():
+            metric = self._regression_metrics(np.array(all_preds[key]), np.array(all_targets[key]), property_name=key, log=log)
+            all_metrics[key] = metric
+
+        if mean_metrics:
+            # First, get the total number of measurements
+            total_measurements = sum(metric.n for metric in all_metrics.values())
+            # Then, compute the weighted mean for each metric
+            mean_rmse = sum(metric.rmse * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_mse = sum(metric.mse * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_mae = sum(metric.mae * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_r2 = sum(metric.r2 * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_spearman = sum(metric.spearman * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_kendalls_tau = sum(metric.kendalls_tau * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_pearson = sum(metric.pearson * metric.n for metric in all_metrics.values()) / total_measurements
+            mean_metric = QMAPRegressionMetrics(
+                property_name="mean",
+                n=total_measurements,
+                rmse=mean_rmse,
+                mse=mean_mse,
+                mae=mean_mae,
+                r2=mean_r2,
+                spearman=mean_spearman,
+                kendalls_tau=mean_kendalls_tau,
+                pearson=mean_pearson
+            )
+            all_metrics["mean"] = mean_metric
+
+        return all_metrics
+
+
+
     def extend(self, other: 'DBAASPDataset') -> 'DBAASPDataset':
         """
         Extend the dataset with another DBAASPDataset.
@@ -251,3 +347,52 @@ class DBAASPDataset:
         bonds, use bond_type=[None].
         """
         return self.filter(filter_bond(bond_type))
+
+
+    def _regression_metrics(self, predictions: np.ndarray, targets: np.ndarray, property_name: str, log: bool = True) -> QMAPRegressionMetrics:
+        """
+        Compute the QMAP metrics given the predictions of the model. The metrics computed are:
+        - RMSE
+        - MSE
+        - MAE
+        - R2
+        - Spearman correlation
+        - Kendall's tau
+        - Pearson correlation
+
+        :param predictions: The predictions to evaluate. It should have the same length and order as this dataset.
+        :param targets: The targets to evaluate. It should have the same length and order as this dataset.
+        :param property_name: The name of the property to compute the metrics for.
+        :param log: If true, apply a log10 on the targets.
+        :return: A QMAPRegressionMetrics object containing all the metrics.
+        """
+        if predictions.ndim == 1:
+            predictions = predictions[:, None]
+        if predictions.ndim > 2:
+            raise ValueError("Predictions must have a shape: (N_samples, N_species) if specie_as_input is False or (N_samples,)  otherwise")
+        targets = np.log10(targets) if log else targets
+        mse = 0
+        mae = 0
+        rmse = 0
+        r2 = 0
+        spearman = 0
+        kendalls_tau = 0
+        pearson = 0
+        mse += np.mean((targets- predictions) ** 2)
+        mae += np.mean(np.abs(targets - predictions))
+        rmse += np.sqrt(mse)
+        r2 += r2_score(targets, predictions)
+        spearman += spearmanr(targets, predictions).statistic
+        kendalls_tau += kendalltau(targets, predictions).statistic
+        pearson += pearsonr(targets, predictions).statistic
+
+        n = len(predictions)
+        return QMAPRegressionMetrics(property_name=property_name,
+                            n=n,
+                           rmse=rmse / n,
+                           mse=mse / n,
+                           mae=mae / n,
+                           r2=r2 / n,
+                           spearman=spearman / n,
+                           kendalls_tau=kendalls_tau / n,
+                           pearson=pearson / n)

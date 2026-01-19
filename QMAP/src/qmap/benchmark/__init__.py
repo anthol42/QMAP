@@ -1,2 +1,2 @@
 from .benchmark import QMAPBenchmark
-from .dataset import Sample, DBAASPDataset
+from .dataset import DBAASPDataset, Sample, Bond, Target, HemolyticActivity

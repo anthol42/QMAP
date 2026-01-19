@@ -3,7 +3,7 @@ from typing import List, Literal, Optional
 import numpy as np
 
 def compute_binary_mask(train_sequences: List[str],
-                    test_sequences: List[str],
+                            test_sequences: List[str],
                             threshold: float = 0.6,
                             matrix: str = "blosum45",
                             gap_open: int = 5,
@@ -24,7 +24,8 @@ Also: pam{10-500} in steps of 10
     :param use_cache: Whether to use caching (default: True)
     :param show_progress: Whether to show progress bar
     :param num_threads: Number of threads to use for parallel computation (default: None = all available cores)
-    :return: A Edgelist array, where each row is (index1, index2, identity)
+    :return: A binary mask where True means that the sequence is allowed in the training set and False means that the
+    sequence is too similar to a sequence in the test set and must be excluded.
     """
     return pe.compute_binary_mask(
         train_sequences,
