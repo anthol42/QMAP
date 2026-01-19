@@ -124,36 +124,36 @@ with open(f'{BUILD_PATH}/dataset.fasta', 'w') as f:
 
 # 3: Split the dataset 5 times with two different threshold: 55% and 60% with 20% of the data in the test set
 # We will keep only sequences smaller than 100 amino acids
-dataset_tmp = [sample for sample in dataset_tmp if len(sample['Sequence']) <= 100]
-for split in range(5):
-    train_sequences, test_sequences, train_samples, test_samples = train_test_split(
-        [sample['Sequence'] for sample in dataset_tmp],
-        dataset_tmp,
-        threshold=0.6,
-        test_size=0.2,
-    )
-    # Save the dataset as json
-    with open(f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json', "w") as f:
-        json.dump(test_samples, f)
+# dataset_tmp = [sample for sample in dataset_tmp if len(sample['Sequence']) <= 100]
+# for split in range(5):
+#     train_sequences, test_sequences, train_samples, test_samples = train_test_split(
+#         [sample['Sequence'] for sample in dataset_tmp],
+#         dataset_tmp,
+#         threshold=0.6,
+#         test_size=0.2,
+#     )
+#     # Save the dataset as json
+#     with open(f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json', "w") as f:
+#         json.dump(test_samples, f)
 
 # Upload to hugginface
-hf_token = os.getenv('HUGGINGFACE_HUB_TOKEN')
-if not hf_token:
-    print("Huggin face token not found. Cannot push to hub. Exiting.")
-    exit(1)
-login(token=hf_token)
+# hf_token = os.getenv('HUGGINGFACE_HUB_TOKEN')
+# if not hf_token:
+#     print("Huggin face token not found. Cannot push to hub. Exiting.")
+#     exit(1)
+# login(token=hf_token)
 
-api = HfApi()
-api.create_repo(
-    repo_id="anthol42/qmap_benchmark_2025",
-    repo_type="dataset",
-    exist_ok=True
-)
+# api = HfApi()
+# api.create_repo(
+#     repo_id="anthol42/qmap_benchmark_2025",
+#     repo_type="dataset",
+#     exist_ok=True
+# )
 
-for split in range(5):
-    api.upload_file(
-        path_or_fileobj=f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json',
-        path_in_repo=f'benchmark_threshold-60_split-{split}.json',  # name in the repo
-        repo_id="anthol42/qmap_benchmark_2025",
-        repo_type="dataset"
-    )
+# for split in range(5):
+#     api.upload_file(
+#         path_or_fileobj=f'{BUILD_PATH}/benchmark_threshold-60_split-{split}.json',
+#         path_in_repo=f'benchmark_threshold-60_split-{split}.json',  # name in the repo
+#         repo_id="anthol42/qmap_benchmark_2025",
+#         repo_type="dataset"
+#     )

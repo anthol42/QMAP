@@ -12,7 +12,7 @@ class Bond:
         return self._data['type']['name']
     @property
     def cycleType(self):
-        return self._data['cycleType']['name']
+        return self._data['cycleType']['description']
     @property
     def chainParticipating(self):
         return self._data['chainParticipating']['name']

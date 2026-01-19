@@ -1,5 +1,5 @@
 import re
-from .utils import precision, compute_molecular_weight
+from .utils import precision, compute_peptide_weight, compute_smiles_weight
 
 class TargetBase:
     def __init__(self, data: dict, peptide: 'Peptide'):
@@ -29,32 +29,34 @@ class TargetBase:
             activity_string = '16-128'
 
 
-        activity_string = activity_string.replace('–', '-').replace('~', '').replace('+', '±')
+        activity_string = activity_string.replace('–', '-').replace('~', '').replace('+', '±').replace("E6", "").replace("E", "")
         if '±0.0' in activity_string:
             activity_string = activity_string.replace('±0.0', '')
-        if 'E' in activity_string.upper():
-            return float(activity_string), float(activity_string)
-        elif '-' in activity_string:
+
+        if '-' in activity_string:
             activity_string = activity_string\
-                .replace('=', '')\
-                .replace('>','')\
-                .replace('<','')
+                .replace(">=", "")\
+                .replace("=<", "")\
+                .replace("=", "")\
+                .replace(" ", "")
             if activity_string == '-':    # missing value
                 return float('nan'), float('nan')
-            return (float(activity_string.split('-')[0]), float(activity_string.split('-')[1]))  if activity_string.split('-')[0] else (float('nan'), float('nan'))
-        elif '>=' in activity_string or '≥' in activity_string:
-            activity_string = re.sub(r'±.*', '', activity_string.replace('>=', '').replace('≥', ''))
+            minAct = activity_string.split('-')[0]
+            maxAct = activity_string.split('-')[1]
+            if minAct.startswith('<'):
+                minAct = 0.
+            else:
+                minAct = float(minAct.replace(">", ""))
+            if maxAct.startswith('>'):
+                maxAct = float('inf')
+            else:
+                maxAct = float(maxAct)
+            return minAct, maxAct
+        elif '>=' in activity_string or '≥' in activity_string or '>' in activity_string:
+            activity_string = re.sub(r'±.*', '', activity_string.replace('>=', '').replace('≥', '').replace(">", '')).replace(" ", "")
             return float(activity_string), float('inf')
-        elif '<=' in activity_string:
-            activity_string = re.sub(r'±.*', '', activity_string.replace('<=', ''))
-            return 0., float(activity_string)
-        elif '>' in activity_string:
-            activity_string = re.sub(r'±.*', '', activity_string.replace('>', ''))
-            if " " in activity_string:
-                activity_string = re.sub(r' \(.*\)', '', activity_string)
-            return float(activity_string), float('inf')
-        elif '<' in activity_string:
-            activity_string = re.sub(r'±.*', '', activity_string.replace('<', ''))
+        elif '<=' in activity_string or '<' in activity_string:
+            activity_string = re.sub(r'±.*', '', activity_string.replace('<=', '').replace("<", ''))
             return 0., float(activity_string)
         elif activity_string == 'NA':
             return float('nan'), float('nan')
@@ -76,8 +78,17 @@ class TargetBase:
             # print(raw_activity_string)
             return float(activity_string), float(activity_string)
     def convert_to_micromolar(self):
-        molar_mass = compute_molecular_weight(self.peptide.sequence, self.peptide.nTerminus, self.peptide.cTerminus, self.peptide.unusualAminoAcids)
-        molar_mass = molar_mass or 1 # If molar_mass is 0, we set it to 1 to avoid division by zero. This happens when the peptide has no sequence (multimer)
+        if "X" in self.peptide.common_sequence.upper():
+            mol_weights = [compute_smiles_weight(smiles) for smiles in self.peptide.smiles]
+            if any(abs(mw - mol_weights[0]) > 1e-4 for mw in mol_weights):
+                mol_weights = [None]
+            molar_mass = mol_weights[0]
+        else:
+            molar_mass = compute_peptide_weight(self.peptide.common_sequence, self.peptide.nTerminus, self.peptide.cTerminus)
+
+        if molar_mass is None:
+            return float('nan'), float('nan')
+
         mi, ma = precision(1e3 * self.minActivity / molar_mass, 3), precision(1e3 * self.maxActivity / molar_mass,
                                                                              3)
         return mi, ma

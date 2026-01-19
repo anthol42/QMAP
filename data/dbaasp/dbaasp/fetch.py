@@ -20,7 +20,7 @@ def fetch_raw(out_path: str = '.cache/DBAASP_raw.json', load_cache: bool = True)
         with open(out_path, 'r') as f:
             return json.load(f)
 
-    MAX_ID = 23951 # As of June 2025
+    MAX_ID = 24207 # As of January 2026
 
     raw_data = []
     for ID in tqdm(range(1, MAX_ID + 1)):
