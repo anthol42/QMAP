@@ -2,10 +2,19 @@
 name = "pwiden_engine"
 version = "0.1.0"
 edition = "2024"
+description = "Fast pairwise sequence identity calculations for bioinformatics"
+license = "MIT"
+repository = "https://github.com/anthol42/QMAP"
+# Include pwiden_engine directory in source distributions
+include = [
+    "pwiden_engine/src/**/*.rs",
+]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "pwiden_engine"
+# path defaults to src/lib.rs
 path = "pwiden_engine/src/lib.rs"
 crate-type = ["cdylib"]
 

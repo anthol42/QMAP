@@ -23,6 +23,12 @@ build-backend = "maturin"
 python-source = "src"
 python-packages = ["qmap"]
 profile = "release"
+# Include the pwiden_engine Rust source directory
+# include = ["pwiden_engine/src/**/*.rs"]
+exclude = [
+    "pwiden_engine/*",
+    "!pwiden_engine/src",
+]
 
 [dependency-groups]
 dev = [
