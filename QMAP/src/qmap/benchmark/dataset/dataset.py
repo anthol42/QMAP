@@ -1,5 +1,5 @@
 from scipy.stats import spearmanr, kendalltau, pearsonr
-from typing import Callable, Optional, Literal, Union
+from typing import Callable, Optional, Literal, Union, List
 from huggingface_hub import hf_hub_download
 from collections import defaultdict
 import pandas as pd
@@ -10,6 +10,7 @@ import math
 from .bond import Bond
 from .sample import Sample
 from .target import Target
+import pwiden_engine as pe
 from .metrics import r2_score
 from .hemolytic import HemolyticActivity
 from .QMAP_metrics import QMAPRegressionMetrics
@@ -214,7 +215,7 @@ class DBAASPDataset:
             for key, value in pred.items():
                 if key == "hc50" and not math.isnan(sample.hc50.consensus):
                     all_targets["hc50"].append(sample.hc50.consensus)
-                    all_preds["hc50"].append(sample.hc50.consensus)
+                    all_preds["hc50"].append(value)
                 elif key in sample.targets:
                     all_targets[key].append(sample.targets[key].consensus)
                     all_preds[key].append(value)
@@ -254,6 +255,42 @@ class DBAASPDataset:
 
         return all_metrics
 
+    def get_train_mask(self, sequences: List[str],
+                       threshold: float = 0.6,
+                       matrix: str = "blosum45",
+                       gap_open: int = 5,
+                       gap_extension: int = 1,
+                       use_cache: bool = True,
+                       show_progress: bool = True,
+                       num_threads: Optional[int] = None,
+                       ) -> np.ndarray:
+        """
+        Returns a mask indicating which sequences can be in the training set because they are not too similar to any
+        other sequence in the test set. It returns a boolean mask where True means that the sequence is allowed in the
+        training / validation set and False means that the sequence is too similar to a sequence in the test set and
+        must be excluded.
+        :param sequences: The training sequences to check against the benchmark test set.
+        :param threshold: Minimum similarity threshold to save the edge.
+        :param matrix: Substitution matrix name (default: "blosum45")
+        Supported: blosum{30, 35, 40, 45, 50, 55, 60, 62, 65, 70, 75, 80, 85, 90, 95, 100}
+        Also: pam{10-500} in steps of 10
+        :param gap_open: Gap opening penalty
+        :param gap_extension: Gap extension penalty
+        :param use_cache: Whether to use caching (default: True)
+        :param show_progress: Whether to show progress bar
+        :param num_threads: Number of threads to use for parallel computation (default: None = all available cores)
+        :return: A binary mask where True means that the sequence is allowed in the training set and False means that the
+        sequence is too similar to a sequence in the test set and must be excluded.
+        """
+        return ~pe.compute_binary_mask(sequences, self.sequences,
+                                   threshold=threshold,
+                                   matrix=matrix,
+                                   gap_open=gap_open,
+                                   gap_extension=gap_extension,
+                                   use_cache=use_cache,
+                                   show_progress=show_progress,
+                                   num_threads=num_threads
+                                   )
 
 
     def extend(self, other: 'DBAASPDataset') -> 'DBAASPDataset':
@@ -366,33 +403,22 @@ class DBAASPDataset:
         :param log: If true, apply a log10 on the targets.
         :return: A QMAPRegressionMetrics object containing all the metrics.
         """
-        if predictions.ndim == 1:
-            predictions = predictions[:, None]
-        if predictions.ndim > 2:
-            raise ValueError("Predictions must have a shape: (N_samples, N_species) if specie_as_input is False or (N_samples,)  otherwise")
         targets = np.log10(targets) if log else targets
-        mse = 0
-        mae = 0
-        rmse = 0
-        r2 = 0
-        spearman = 0
-        kendalls_tau = 0
-        pearson = 0
-        mse += np.mean((targets- predictions) ** 2)
-        mae += np.mean(np.abs(targets - predictions))
-        rmse += np.sqrt(mse)
-        r2 += r2_score(targets, predictions)
-        spearman += spearmanr(targets, predictions).statistic
-        kendalls_tau += kendalltau(targets, predictions).statistic
-        pearson += pearsonr(targets, predictions).statistic
+        mse = np.mean((targets- predictions) ** 2)
+        mae = np.mean(np.abs(targets - predictions))
+        rmse = np.sqrt(mse)
+        r2 = r2_score(targets, predictions)
+        spearman = spearmanr(targets, predictions).statistic
+        kendalls_tau = kendalltau(targets, predictions).statistic
+        pearson = pearsonr(targets, predictions).statistic
 
         n = len(predictions)
         return QMAPRegressionMetrics(property_name=property_name,
                             n=n,
-                           rmse=rmse / n,
-                           mse=mse / n,
-                           mae=mae / n,
-                           r2=r2 / n,
-                           spearman=spearman / n,
-                           kendalls_tau=kendalls_tau / n,
-                           pearson=pearson / n)
+                           rmse=rmse,
+                           mse=mse,
+                           mae=mae,
+                           r2=r2,
+                           spearman=spearman,
+                           kendalls_tau=kendalls_tau,
+                           pearson=pearson)

@@ -13,6 +13,7 @@ def compute_binary_mask(train_sequences: List[str],
                             num_threads: Optional[int] = None,
                             ) -> np.ndarray:
     """
+
     :param train_sequences: List of training sequences
     :param test_sequences: List of test sequences
     :param threshold: Minimum similarity threshold to save the edge.
@@ -24,8 +25,8 @@ Also: pam{10-500} in steps of 10
     :param use_cache: Whether to use caching (default: True)
     :param show_progress: Whether to show progress bar
     :param num_threads: Number of threads to use for parallel computation (default: None = all available cores)
-    :return: A binary mask where True means that the sequence is allowed in the training set and False means that the
-    sequence is too similar to a sequence in the test set and must be excluded.
+    :return: A 1D numpy boolean array of length n_train. True indicates the training sequence
+    should be removed (has identity >= threshold with at least one test sequence).
     """
     return pe.compute_binary_mask(
         train_sequences,
