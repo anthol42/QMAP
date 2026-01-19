@@ -1,11 +1,10 @@
-from torch.utils.data import Dataset
 from typing import List, Tuple, Optional, Literal, Union
 import numpy as np
 from .QMAP_metrics import QMAPRegressionMetrics, QMAPClassificationMetrics
 from scipy.stats import spearmanr, kendalltau, pearsonr
 from .metrics import balanced_accuracy, precision, recall, f1_score, mcc_score, r2_score
 
-class BenchmarkSubset(Dataset):
+class BenchmarkSubset:
     """
     Base class of the QMAP benchmark class. It provides a common interface for the benchmark dataset and the subsets.
     """

@@ -54,7 +54,7 @@ Also: pam{10-500} in steps of 10
     :return: A tuple containing the Seq_train, Seq_test, *metadata_train, metadata_test. The metadata will be the same as the input metadata, but split into training and test sets.
     """
     # Step 1: Validate inputs
-    if not hasattr(sequences, '__getitem__') or not all(isinstance(seq, str) for seq in sequences):
+    if not isinstance(sequences, DBAASPDataset) and (not hasattr(sequences, '__getitem__') or not all(isinstance(seq, str) for seq in sequences)):
         raise ValueError("Sequences must be a list of strings.")
     if isinstance(test_size, float) and (test_size <= 0 or test_size > 1) or isinstance(test_size, int) and test_size <= 0:
         raise ValueError("test_size must be a float between 0 and 1 or an integer greater than 0.")
@@ -142,6 +142,6 @@ Also: pam{10-500} in steps of 10
     if dataset is not None:
         train_dataset = dataset[train_ids]
         test_dataset = dataset[test_ids]
-        return train_dataset, test_dataset, split_metadata
+        return train_dataset, test_dataset, *split_metadata
     else:
         return train_sequences, test_sequences, *split_metadata

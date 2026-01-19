@@ -6,7 +6,6 @@ from huggingface_hub import hf_hub_download
 
 from .subset import BenchmarkSubset
 from ..toolkit.utils import sequence_entropy
-from ..toolkit.aligner import Encoder, align_db
 
 COMPLEXITY_THRESHOLD = 2.62 # The median of the DBAASP dataset.
 

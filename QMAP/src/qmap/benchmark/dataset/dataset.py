@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 from typing import Callable, Optional, Literal, Union
 from .sample import Sample
+from .bond import Bond
+from .target import Target
+from .hemolytic import HemolyticActivity
 from .filters import (filter_bacteria, filter_efficiency_below, filter_hc50, filter_canonical_only,
                       filter_common_only, filter_l_aa_only, filter_terminal_modification, filter_bond)
 
@@ -53,6 +56,62 @@ class DBAASPDataset:
         """
         self.samples = [Sample.FromDict(sample_data) for sample_data in data]
 
+    @property
+    def sequences(self) -> list[str]:
+        """
+        Return the list of sequences in the dataset.
+        """
+        return [sample.sequence for sample in self.samples]
+
+    @property
+    def ids(self) -> list[int]:
+        """
+        Return the list of DBAASP IDs in the dataset.
+        """
+        return [sample.id for sample in self.samples]
+
+    @property
+    def smiles(self) -> list[list[str]]:
+        """
+        Return the list of SMILES strings in the dataset.
+        """
+        return [sample.smiles for sample in self.samples]
+
+    @property
+    def nterminals(self) -> list[Optional[str]]:
+        """
+        Return the list of N-terminal modifications in the dataset.
+        """
+        return [sample.nterminal for sample in self.samples]
+
+    @property
+    def cterminals(self) -> list[Optional[str]]:
+        """
+        Return the list of C-terminal modifications in the dataset.
+        """
+        return [sample.cterminal for sample in self.samples]
+
+    @property
+    def bonds(self) -> list[Bond]:
+        """
+        Return the list of bonds in the dataset.
+        """
+        return [sample.bonds for sample in self.samples]
+
+    @property
+    def targets(self) -> list[list[Target]]:
+        """
+        Return the list of targets in the dataset.
+        """
+        return [list(sample.targets.values) for sample in self.samples]
+
+    @property
+    def hc50s(self) -> list[Optional[HemolyticActivity]]:
+        """
+        Return the list of hemolytic activities (HC50) in the dataset.
+        """
+        return [sample.hc50 for sample in self.samples]
+
     @classmethod
     def FromSamples(cls, samples: list[Sample]) -> "DBAASPDataset":
         """
@@ -68,13 +127,13 @@ class DBAASPDataset:
     def __getitem__(self, idx: Union[int, slice, np.ndarray, list[bool], list[int]]):
         if isinstance(idx, np.ndarray):
             if idx.dtype == bool:
-                return [sample for sample, keep in zip(self.samples, idx) if keep]
+                return DBAASPDataset.FromSamples([sample for sample, keep in zip(self.samples, idx) if keep])
             else:
-                return [self.samples[i] for i in idx.tolist()]
+                return DBAASPDataset.FromSamples([self.samples[i] for i in idx.tolist()])
         elif isinstance(idx, list) and all(isinstance(i, bool) for i in idx):
-            return [sample for sample, keep in zip(self.samples, idx) if keep]
+            return DBAASPDataset.FromSamples([sample for sample, keep in zip(self.samples, idx) if keep])
         elif isinstance(idx, list) and all(isinstance(i, int) for i in idx):
-            return [self.samples[i] for i in idx]
+            return DBAASPDataset.FromSamples([self.samples[i] for i in idx])
         elif isinstance(idx, int):
             return self.samples[idx]
         elif isinstance(idx, slice):

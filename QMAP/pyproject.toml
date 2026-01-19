@@ -15,23 +15,13 @@ dependencies = [
 keywords = ["qmap", "protein", "clustering", "sequence", "database", "machine learning", "deep learning"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.11,<2.0"]
+build-backend = "maturin"
 
-[tool.hatch.build]
-sources = ["src"]
-
-[tool.hatch.build.hooks.version]
-path = "src/qmap/__version__.py"
-
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/qmap",
-  "pyproject.toml",
-  "README.md"
-]
-[tool.hatch.build.targets.wheel]
-packages = ["src/qmap"]
+[tool.maturin]
+# Include Python source files in addition to the Rust extension
+python-source = "src"
+python-packages = ["qmap"]
 
 [dependency-groups]
 dev = [
