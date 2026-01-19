@@ -26,7 +26,7 @@ def predict(model, X):
 
             preds.append(predict_MIC.cpu().numpy())
 
-    return -np.concatenate(preds).reshape(-1)
+    return [{"Escherichia coli": -pred.item()} for pred in np.concatenate(preds)]
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -53,50 +53,36 @@ if __name__ == '__main__':
 
         train_data = pd.read_csv(full_path)
         for split in range(5):
-            benchmark = QMAPBenchmark(split,
-                                      species_subset=['Escherichia coli']
-                                      )
-            test_x = benchmark.inputs
-            test_y = -np.log10(benchmark.targets.reshape(-1))
+            benchmark = QMAPBenchmark(split).with_bacterial_targets(["Escherichia coli"])
+            test_x = benchmark.tabular(["sequence"])["sequence"].tolist()
+            test_y = -np.log10(benchmark.tabular(["Escherichia coli"]).values.reshape(-1))
             test_data = pd.DataFrame(dict(SEQUENCE_space=[" ".join(seq) for seq in test_x], EC_pMIC=test_y))
             mask = benchmark.get_train_mask(train_data["SEQUENCE"].values)
-
             test_predict_list, model, _, _, _, _ = train(0, 12,
                                                           1., train_data.loc[mask],
                                                           test_data,
-                                                          epochs=20,
+                                                          epochs=5,
                                                           frozen_layers=0,
                                                           lr=1e-5,
                                                           weight_decay=3e-3
                                                           )
             preds = predict(model, test_x)
-            results = benchmark.compute_metrics(preds)
+            results = benchmark.compute_metrics(preds)["Escherichia coli"]
             print(Colors.green, results, Colors.reset)
             all_results.append(results)
 
-            high_comp_benchmark = benchmark.high_complexity
-            preds = predict(model, high_comp_benchmark.inputs)
-            all_results_high_complexity.append(high_comp_benchmark.compute_metrics(preds))
 
-            low_comp_benchmark = benchmark.low_complexity
-            preds = predict(model, low_comp_benchmark.inputs)
-            all_results_low_complexity.append(low_comp_benchmark.compute_metrics(preds))
-
-            high_eff_benchmark = benchmark.high_efficiency
-            preds = predict(model, high_eff_benchmark.inputs)
-            all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds))
+            high_eff_benchmark = benchmark.with_efficiency_below(10.)
+            preds = predict(model, high_eff_benchmark.tabular(["sequence"])["sequence"].tolist())
+            all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
 
         all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
-        high_complexity = pd.DataFrame([result.dict() for result in all_results_high_complexity])
-        low_complexity = pd.DataFrame([result.dict() for result in all_results_low_complexity])
         high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
 
         # Export to pandas
         if not os.path.exists('results'):
             os.makedirs('results')
         all_result_table.to_csv('results/full.csv')
-        high_complexity.to_csv('results/high_complexity.csv')
-        low_complexity.to_csv('results/low_complexity.csv')
         high_efficiency.to_csv('results/high_efficiency.csv')
 
         print(all_results[0].md_col, end="")
