@@ -5,11 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "antho-utils>=0.2.1",
     "biopython==1.75",
     "h5py>=3.14.0",
     "numpy==1.22.0",
     "pandas<2.0",
-    "qmap",
+    "qmap-benchmark",
     "scikit-learn>=1.7.1",
     "six==1.15",
     "tensorflow==2.11.1",
@@ -17,4 +18,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-qmap = { path = "../../QMAP", editable = true }
+qmap-benchmark = { path = "../../QMAP" }
