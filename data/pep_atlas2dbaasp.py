@@ -15,13 +15,15 @@ np.random.seed(42)
 np.random.shuffle(pep_atlas)
 
 
-max_identity = compute_maximum_identity(dbaasp.sequences, pep_atlas[:500_000])
+max_identity = compute_maximum_identity(dbaasp.sequences, pep_atlas)
 
 quantiles = [0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
 quantiles_values = np.quantile(max_identity, quantiles)
 
-for quantile, val in zip(quantiles, quantiles_values):
-    print(f"Quantile {int(quantile*100)}%: {val:.3f}")
+with open('quantiles.txt', 'w') as f:
+    for quantile, val in zip(quantiles, quantiles_values):
+        print(f"Quantile {int(quantile*100)}%: {val:.3f}")
+        f.write(f'{int(quantile*100)};{val:.3f}')
 
 plt.hist(max_identity, bins=100, density=True, range=(0, 1))
 plt.xlabel("Maximum identity to DBAASP")
