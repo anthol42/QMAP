@@ -9,6 +9,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--option', type=str, default='qmap')
+parser.add_argument('--earlystoping', action="store_true")
 
 def predict(model, X):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -30,7 +31,7 @@ def predict(model, X):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-
+    early_stopping = args.earlystoping
     full_path = f'data/EC.csv'
     train_path = f"data/train-EC.csv"
     test_path = f"data/test-EC.csv"
@@ -52,6 +53,7 @@ if __name__ == '__main__':
         all_results_high_eff = []
 
         train_data = pd.read_csv(full_path)
+        valid_data = pd.read_csv(test_path)
         for split in range(5):
             benchmark = (QMAPBenchmark(split)
                          .with_bacterial_targets(["Escherichia coli"])
@@ -62,15 +64,18 @@ if __name__ == '__main__':
                          )
             test_x = benchmark.tabular(["sequence"])["sequence"].tolist()
             test_y = -np.log10(benchmark.tabular(["Escherichia coli"]).values.reshape(-1))
+
             test_data = pd.DataFrame(dict(SEQUENCE_space=[" ".join(seq) for seq in test_x], EC_pMIC=test_y))
             mask = benchmark.get_train_mask(train_data["SEQUENCE"].values)
+            valid_mask = benchmark.get_train_mask(valid_data["SEQUENCE"].values)
             test_predict_list, model, _, _, _, _ = train(0, 12,
                                                           1., train_data.loc[mask],
-                                                          test_data,
+                                                          valid_data.loc[valid_mask],
                                                           epochs=5,
                                                           frozen_layers=0,
                                                           lr=1e-5,
-                                                          weight_decay=3e-3
+                                                          weight_decay=3e-3,
+                                                          early_stopping=early_stopping
                                                           )
             preds = predict(model, test_x)
             results = benchmark.compute_metrics(preds)["Escherichia coli"]
@@ -88,9 +93,13 @@ if __name__ == '__main__':
         # Export to pandas
         if not os.path.exists('results'):
             os.makedirs('results')
-        all_result_table.to_csv('results/full.csv')
-        high_efficiency.to_csv('results/high_efficiency.csv')
 
+        if early_stopping:
+            all_result_table.to_csv(f'results/full_es.csv')
+            high_efficiency.to_csv('results/high_efficiency_es.csv')
+        else:
+            all_result_table.to_csv(f'results/full.csv')
+            high_efficiency.to_csv('results/high_efficiency.csv')
         print(all_results[0].md_col, end="")
         for results in all_results:
             print(results.md_row, end="")

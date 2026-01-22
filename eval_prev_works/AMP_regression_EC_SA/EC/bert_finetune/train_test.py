@@ -9,14 +9,15 @@ from scipy.stats import pearsonr, kendalltau
 from EC.bert_finetune.model_def import REG
 from EC.bert_finetune.seq_dataloader import _get_train_data_loader, _get_test_data_loader, freeze
 from datetime import datetime
+import os
 
-def train(seed, batch_size, train_fract, train_data, test_data, *,
-          epochs, frozen_layers, lr, weight_decay):
+def train(seed, batch_size, train_fract, train_data, valid_data, *,
+          epochs, frozen_layers, lr, weight_decay, early_stopping):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     train_loader = _get_train_data_loader(batch_size, train_data, train_fract)
-    test_loader = _get_test_data_loader(500, test_data)
+    valid_loader = _get_test_data_loader(500, valid_data)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # set the seed for generating random numbers
 
@@ -47,6 +48,8 @@ def train(seed, batch_size, train_fract, train_data, test_data, *,
     test_min_mse_epoch = 1
     test_min_mse_pcc = 0.5
     test_min_mse_r2 = 0.0
+    if os.path.exists('prot_bert_finetune_amazon.pkl'):
+        os.remove("prot_bert_finetune_amazon.pkl")
     for epoch in range(epochs): # args.epochs
         model.train()
         train_predict_list = []
@@ -88,7 +91,7 @@ def train(seed, batch_size, train_fract, train_data, test_data, *,
 
         model.eval()
         with torch.no_grad():
-            for batch in test_loader:
+            for batch in valid_loader:
                 b_input_ids = batch['input_ids'].to(device)
                 b_input_mask = batch['attention_mask'].to(device)
                 b_labels = batch['targets'].to(device)
@@ -109,19 +112,21 @@ def train(seed, batch_size, train_fract, train_data, test_data, *,
         test_r2_list.append(test_r2)
         test_pcc_list.append(test_pcc)
         test_ktc_list.append(test_ktc)
-        if test_mse < test_min_mse:
+        if test_mse < test_min_mse and early_stopping:
             test_min_mse = test_mse
             test_min_mse_pcc = test_pcc
             test_min_mse_epoch = epoch
             test_min_mse_r2 = test_r2
-            #torch.save(model.state_dict(), "prot_bert_finetune_amazon.pkl")
-            #torch.save(test_loader, "test_loader.pkl")
+            torch.save(model.state_dict(), "prot_bert_finetune_amazon.pkl")
 
         result_dict = {"seed": seed, "train_mse": mse_list, "pcc": r2_list,
                        "test_mse": test_mse_list, "test_pcc": test_pcc_list, "test_r2":test_r2_list,
                        "best_mse": test_min_mse, "best_pcc": test_min_mse_pcc}
         result_df = pd.DataFrame(result_dict)
         #result_df.to_csv(args.result_dir)
+    if early_stopping:
+        model.load_state_dict(torch.load("prot_bert_finetune_amazon.pkl"))
+
     return test_predict_list, model, test_min_mse_epoch, test_min_mse, test_min_mse_pcc, test_min_mse_r2
 
 if __name__ == "__main__":
