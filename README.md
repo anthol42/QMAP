@@ -2,6 +2,13 @@
 
 Here is the code to reproduce the results and figures of our paper. There is also the source code of the `qmap-benchmark` PyPi package in the `QMAP` directory.
 
+## TODO:
+- [ ] Remake the code to create the figures, and in pdf
+- [ ] Update documentation (examples in the notebook) for the qmap package
+- [ ] Add reproducing steps in the readme to reproduce each figure and the benchmark.
+- [ ] Use `cibuildwheel` to make wheels for most common targets
+- [ ] Update the paper with revisions
+- [ ] Submit + release pypi package + make this repo public
 
 ## Install QMAP-benchmark
 ```shell
