@@ -1,0 +1,9 @@
+0.01 quantile: 0.347
+0.05 quantile: 0.400
+0.10 quantile: 0.429
+0.25 quantile: 0.467
+0.50 quantile: 0.500
+0.75 quantile: 0.545
+0.90 quantile: 0.571
+0.95 quantile: 0.583
+0.99 quantile: 0.591
