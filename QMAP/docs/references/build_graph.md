@@ -1,20 +1,21 @@
-*src.qmap.toolkit.clustering*
+*src.qmap.toolkit*
 # Function: `build_graph()`
 
 ```python
-build_graph(db: VectorizedDB, threshold: float, batch_size: int = 0, path: typing.Union[str, NoneType] = None) -> tuple[str, dict]:
+build_graph(sequences: list[str], threshold: float, args, kwargs) -> tuple[Graph, dict[tuple[int, int], float]]:
 ```
 
-**Description:** Builds a graph from a VectorDB of sequences
-:param db: The VectorDB to build the graph from
+**Description:** Builds a graph from a list of sequences and an identity threshold. Sequences are connected if their identity score
+is above or equal to the threshold.
+:param sequences: The list of sequences to build the graph from
 :param threshold: The threshold to establish an edge between two sequences based on their identity score
-:param batch_size: The number of sequences to process at each step. If 0, the whole db is processed at once.
-:param path: The path to save the graph to. If None, the graph is saved in a temporary folder.
-:return: The path to the edgelist file containing the graph. The file is contained in the tmp folder if not specified.
+:param args: Additional positional arguments to pass to the pwiden engine that will create the edges.
+:param kwargs: Additional keyword arguments to pass to the pwiden engine that will create the edges.
+:return: The created graph and the edgelist dictionary (source_node, target_node) -> identity_score
 
 **Parameters:**
-- `db`: db: qmap.toolkit.aligner.vectorizedDB.VectorizedDB
+- `sequences`: sequences: list
 - `threshold`: threshold: float
-- `batch_size`: batch_size: int = 0
-- `path`: path: Optional[str] = None
+- `args`: *args
+- `kwargs`: **kwargs
 
