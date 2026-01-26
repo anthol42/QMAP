@@ -1,5 +1,5 @@
 # Prepare the data
-1. Sync the repository using uv:
+1. Sync the directory using uv:
 ```bash
 uv sync
 ```
@@ -18,13 +18,6 @@ Download the peptide atlas database by running the `pepAtlas/download_pep_atlas.
 ```bash
 uv run download_pep_atlas.py
 ```
-
-## Maxmimum identity experiment
-To run the maximum identity experiment, execute the following command:
-```bash
-uv run pep_atlas2dbaasp.py
-```
-
 > **Note:**<br>
 > It takes around 8h on a MacBook pro M4 to run. Once it has run, the results will be cached, so subsequent runs will 
 > be much faster.

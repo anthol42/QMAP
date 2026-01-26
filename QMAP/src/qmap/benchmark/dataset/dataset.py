@@ -165,7 +165,7 @@ class DBAASPDataset:
         return iter(self.samples)
 
     def __repr__(self):
-        return f"DBAASPDataset({self.samples})"
+        return f"DBAASPDataset({len(self.samples)})"
 
     def __str__(self):
         columns = f'{"DBAASP ID".ljust(10, " ")} {"Sequence".ljust(40, " ")} {"N Terminal".ljust(12)} {"C Terminal".ljust(12)} {"# Targets".ljust(10, " ")} {"HC50".ljust(6, " ")}'

@@ -8,31 +8,26 @@ from typing import get_origin, get_args
 # Specify class and function names to include
 whitelist = {
     'src.qmap.benchmark': [
-        "BenchmarkSubset",
         "QMAPBenchmark",
-        "QMAPClassificationMetrics",
-        "QMAPRegressionMetrics",
+        "DBAASPDataset",
         "Sample",
+        "Bond",
+        "Target",
+        "HemolyticActivity"
     ],
-    'src.qmap.toolkit.aligner':[
-        'Encoder',
-        'align_db',
-        'align_seq2db',
-        'align_seq',
-        'MultiAlignment',
-        'VectorizedDB'
-    ],
-    'src.qmap.toolkit.clustering': [
-        'leiden_community_detection',
-        'build_graph',
-    ],
-    'src.qmap.toolkit.split': [
+    'src.qmap.toolkit': [
         'train_test_split',
-        'random_cluster_split',
-        'maximize_diversity_split',
-        'diversity_proportional_split',
-        'filter_out'
-    ],
+        'compute_global_identity',
+        'get_cache_dir',
+        'compute_binary_mask',
+        'read_fasta',
+        'sequence_entropy',
+        'Identity',
+        'compute_maximum_identity',
+        'create_edgelist',
+        'build_graph',
+        'leiden_community_detection',
+        ]
 }
 
 

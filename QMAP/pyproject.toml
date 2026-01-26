@@ -37,5 +37,6 @@ dev = [
     "pytest>=8.4.1",
     "scikit-learn>=1.5",
     "setuptools>=80.9.0",
+    "torch>=2.8.0",
     "transformers>=4.54.1",
 ]
