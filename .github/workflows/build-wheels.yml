@@ -38,12 +38,12 @@ jobs:
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
           # Windows: install llvm and ensure rust is ready
-          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm cmake -y && rustup default stable"
+          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm -y && rustup default stable"
 
           # Before build macos, for debug purposes
           CIBW_BEFORE_BUILD_MACOS: >
             echo "Homebrew prefix: $(brew --prefix llvm)" &&
-            ls -la $(brew --prefix llvm)/lib/libclang* &&
+            ls -la $(brew --prefix llvm)/lib/libclang*
 
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
