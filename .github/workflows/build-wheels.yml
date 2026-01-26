@@ -44,13 +44,13 @@ jobs:
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
           # Windows: install llvm and ensure rust is ready
-          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm --install-directory C:\\llvm -y && choco install cmake -y && rustup default stable"
+          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm cmake -y && rustup default stable"
 
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
           CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=10.14"          
-          CIBW_ENVIRONMENT_WINDOWS: "LIBCLANG_PATH=C:\\llvm\\bin CARGO_HOME=C:\\c"
-          
+          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" CARGO_HOME=C:\\c'
+
           # Tests
           CIBW_TEST_REQUIRES: "pytest"
           CIBW_TEST_COMMAND: "pytest {project}/QMAP/test_installation.py -v"
