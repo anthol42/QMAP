@@ -1,6 +1,6 @@
 [project]
 name = "QMAP-Benchmark"
-version = "0.0.0"
+version = "0.0.1"
 description = "Benchmark for AMP MIC regression and toxicity prediction with a Toolkit to split peptide sequences datasets into independent sets based on pseudo identity"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -32,6 +32,7 @@ exclude = [
 
 [dependency-groups]
 dev = [
+    "cibuildwheel>=2.23.3",
     "matplotlib>=3.8",
     "pytest>=8.4.1",
     "scikit-learn>=1.5",
