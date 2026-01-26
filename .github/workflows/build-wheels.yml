@@ -35,7 +35,7 @@ jobs:
           # macOS: install llvm (for libclang) and rust
           CIBW_BEFORE_ALL_MACOS: >
             brew install llvm cmake &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
           # Windows: install llvm and ensure rust is ready
           CIBW_BEFORE_ALL_WINDOWS: "choco install llvm cmake -y && rustup default stable"
