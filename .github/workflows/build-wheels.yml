@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14, macos-15-intel] # windows-latest
+        os: [macos-14, macos-15-intel] # windows-latest (not working), ubuntu-latest (working)
 
     steps:
       - uses: actions/checkout@v4
@@ -36,14 +36,18 @@ jobs:
           CIBW_BEFORE_ALL_MACOS: >
             brew install llvm cmake &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y &&
-            echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> $GITHUB_ENV
 
           # Windows: install llvm and ensure rust is ready
           CIBW_BEFORE_ALL_WINDOWS: "choco install llvm cmake -y && rustup default stable"
 
+          # Before build macos, for debug purposes
+          CIBW_BEFORE_BUILD_MACOS: >
+            echo "Homebrew prefix: $(brew --prefix llvm)" &&
+            ls -la $(brew --prefix llvm)/lib/libclang* &&
+
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
-          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=/opt/homebrew/opt/llvm/lib:/usr/local/opt/llvm/lib"
+          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib"
 
           # Tests
           CIBW_TEST_REQUIRES: "pytest"
