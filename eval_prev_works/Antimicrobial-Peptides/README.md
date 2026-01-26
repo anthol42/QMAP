@@ -9,5 +9,5 @@ The new parameter is `option`. You can choose between `original` and `qmap`.
 - `qmap`: Run the code, but with the independent qmap benchmark.
 
 ```shell
-uv run main.py --negatives=1 --bacterium='E. coli' --epochs=60 --option='qmap'
+uv run main.py
 ```
