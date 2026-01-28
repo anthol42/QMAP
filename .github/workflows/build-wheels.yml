@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14, macos-15-intel, windows-latest]
+        os: [windows-latest] # ubuntu-latest, macos-14, macos-15-intel, 
 
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
           # Windows: install llvm and ensure rust is ready
-          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm cmake visualstudio2022buildtools -y && choco install visualstudio2022-workload-vctools -y && rustup default stable"
+          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm -y && rustup default stable"
 
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
@@ -94,4 +94,5 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
