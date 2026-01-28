@@ -14,6 +14,13 @@ dependencies = [
 ]
 keywords = ["qmap", "protein", "clustering", "sequence", "database", "machine learning", "deep learning"]
 
+[project.urls]
+Homepage = "https://github.com/anthol42/QMAP"
+Repository = "https://github.com/anthol42/QMAP"
+"Bug Tracker" = "https://github.com/anthol42/QMAP/issues"
+Documentation = "https://github.com/anthol42/QMAP/tree/main/QMAP/docs"  # Optional
+Changelog = "https://github.com/anthol42/QMAP/releases"  # Optional
+
 [build-system]
 requires = ["maturin>=1.11,<2.0"]
 build-backend = "maturin"
