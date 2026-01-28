@@ -1,6 +1,6 @@
 [project]
 name = "qmap-benchmark"
-version = "0.0.2"
+version = "0.0.3"
 description = "Benchmark for AMP MIC and HC50 regression with a toolkit to split peptide datasets"
 readme = "README.md"
 requires-python = ">=3.9"
