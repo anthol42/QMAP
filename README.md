@@ -65,5 +65,13 @@ The repo is structured as follow:
 Please cite us if you find yourself using our work
 
 ```
-TODO!!!
+@misc{lavertu_qmap_2026,
+    title = {{QMAP}: {A} {Benchmark} for {Standardized} {Evaluation} of {Antimicrobial} {Peptide} {MIC} and {Hemolytic} {Activity} {Regression}},
+    url = {https://www.biorxiv.org/content/10.64898/2026.02.03.703041v1},
+    doi = {10.64898/2026.02.03.703041},
+    publisher = {bioRxiv},
+    author = {Lavertu, Anthony and Corbeil, Jacques and Germain, Pascal},
+    month = feb,
+    year = {2026}
+}
 ```

@@ -124,7 +124,7 @@ class DBAASPDataset:
         """
         Return the list of targets in the dataset.
         """
-        return [list(sample.targets.values) for sample in self.samples]
+        return [list(sample.targets.values()) for sample in self.samples]
 
     @property
     def hc50s(self) -> list[Optional[HemolyticActivity]]:
