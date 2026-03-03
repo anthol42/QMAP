@@ -2,7 +2,7 @@ from typing import Optional, List, Any, Union
 import numpy as np
 
 from .random_cluster_split import random_cluster_split
-from .filtering import filter_out
+from qmap._pwiden_engine import filter_out
 from ..clustering import build_graph, leiden_community_detection
 from ...benchmark.dataset import DBAASPDataset
 
@@ -104,7 +104,7 @@ Also: pam{10-500} in steps of 10
 
     # Step 4: Post filtering if enabled
     if post_filtering:
-        train_ids = filter_out(train_ids, test_ids, edgelist, verbose=verbose)
+        train_ids = filter_out(train_ids, test_ids, edgelist, verbose=verbose, num_threads=num_threads, show_progress=verbose)
 
     # Step 5: Shuffle the splits if required
     if shuffle:
