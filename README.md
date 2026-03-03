@@ -34,11 +34,6 @@ Features:
 | Method | Year | e. coli min PCC | e. coli mean | e. coli max PCC | Source Code |
 |--------|------|-----------------|--------------|-----------------|--------|
 |Linear model on ESM2 embeddings| N/A | -0.18 | 0.07 |  0.29 | [`eval_prev_works/HemoLinear`](eval_prev_works/HemoLinear)|
-## TODO:
-- [ ] Update documentation (examples in the notebook) for the qmap package
-- [ ] Use `cibuildwheel` to make wheels for most common targets
-- [ ] Update the paper with revisions
-- [ ] Submit + release pypi package + make this repo public
 
 ## Install QMAP-benchmark
 ```shell
