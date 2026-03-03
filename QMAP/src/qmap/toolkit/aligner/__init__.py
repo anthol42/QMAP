@@ -3,7 +3,7 @@ from .compute_binary_mask import compute_binary_mask
 from .create_edgelist import create_edgelist
 
 
-import pwiden_engine
+import qmap._pwiden_engine as pe
 
 def get_cache_dir() -> str:
     """
@@ -11,4 +11,4 @@ def get_cache_dir() -> str:
 
     :return: The cache directory path as a string.
     """
-    return pwiden_engine.get_cache_dir()
+    return pe.get_cache_dir()

@@ -5,7 +5,7 @@ import numpy.typing as npt
 from typing import Optional
 from ..aligner import compute_global_identity
 from tqdm import tqdm
-import pwiden_engine as pe
+import qmap._pwiden_engine as pe
 
 
 def _hash_sequences(sequences: list[str]) -> str:

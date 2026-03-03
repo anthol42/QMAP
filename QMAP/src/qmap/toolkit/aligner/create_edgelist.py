@@ -1,4 +1,4 @@
-import pwiden_engine as pe
+import qmap._pwiden_engine as pe
 from typing import List, Optional
 
 

@@ -12,19 +12,19 @@ class TestPwidenEngineImports:
     """Test imports from the pwiden_engine Rust extension."""
 
     def test_import_compute_binary_mask(self):
-        from pwiden_engine import compute_binary_mask
+        from qmap._pwiden_engine import compute_binary_mask
 
     def test_import_compute_global_identity(self):
-        from pwiden_engine import compute_global_identity
+        from qmap._pwiden_engine import compute_global_identity
 
     def test_import_compute_maximum_identity(self):
-        from pwiden_engine import compute_maximum_identity
+        from qmap._pwiden_engine import compute_maximum_identity
 
     def test_import_create_edgelist(self):
-        from pwiden_engine import create_edgelist
+        from qmap._pwiden_engine import create_edgelist
 
     def test_import_get_cache_dir(self):
-        from pwiden_engine import get_cache_dir
+        from qmap._pwiden_engine import get_cache_dir
 
 
 class TestQmapImports:

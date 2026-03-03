@@ -67,7 +67,7 @@ so only the upper triangle is computed for efficiency. The diagonal is automatic
 1.0 (self-identity), and the lower triangle is filled by copying from the upper triangle.
 
 ```python
-import pwiden_engine
+import qmap._pwiden_engine as pwiden_engine
 
 sequences = [
     "ACDEFGHIKLMNPQRSTVWY",
@@ -117,7 +117,7 @@ Returns a dictionary with keys: (source_id, target_id) and value: identity. Only
 included (no duplicates). Supports caching for faster repeated analyses.
 
 ```python
-import pwiden_engine
+import qmap._pwiden_engine as pwiden_engine
 
 sequences = [
     "ACDEFGHIKLMNPQRSTVWY",
@@ -182,7 +182,7 @@ identity >= threshold, the corresponding mask element is set to True, indicating
 training sequence should be removed to ensure independent train/test splits.
 
 ```python
-import pwiden_engine
+import qmap._pwiden_engine as pwiden_engine
 
 train_sequences = [
     "ACDEFGHIKLMNPQRSTVWY",
@@ -249,7 +249,7 @@ This is useful for finding the closest match in the training set for each test s
 identifying test sequences that are too similar to the training data.
 
 ```python
-import pwiden_engine
+import qmap._pwiden_engine as pwiden_engine
 
 train_sequences = [
     "ACDEFGHIKLMNPQRSTVWY",
@@ -320,7 +320,7 @@ print(f"Test sequences too similar to training: {similar_indices}")
 Returns the cache directory path where cached results are stored.
 
 ```python
-import pwiden_engine
+import qmap._pwiden_engine as pwiden_engine
 
 cache_dir = pwiden_engine.get_cache_dir()
 print(f"Cache directory: {cache_dir}")

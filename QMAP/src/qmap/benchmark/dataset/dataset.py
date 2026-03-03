@@ -10,7 +10,7 @@ import math
 from .bond import Bond
 from .sample import Sample
 from .target import Target
-import pwiden_engine as pe
+import qmap._pwiden_engine as pe
 from .metrics import r2_score
 from .hemolytic import HemolyticActivity
 from .QMAP_metrics import QMAPRegressionMetrics

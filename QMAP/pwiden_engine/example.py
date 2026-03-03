@@ -2,7 +2,7 @@
 Example usage of pwiden_engine for pairwise sequence identity calculations.
 """
 
-import pwiden_engine
+import qmap._pwiden_engine
 import numpy as np
 
 # Example protein sequences

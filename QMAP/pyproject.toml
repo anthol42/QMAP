@@ -27,6 +27,7 @@ build-backend = "maturin"
 
 [tool.maturin]
 # Include Python source files in addition to the Rust extension
+module-name = "qmap._pwiden_engine"
 python-source = "src"
 python-packages = ["qmap"]
 profile = "release"
