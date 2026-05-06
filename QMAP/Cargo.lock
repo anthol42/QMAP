@@ -332,8 +332,8 @@ dependencies = [
 
 [[package]]
 name = "libparasail-sys"
-version = "0.1.12"
-source = "git+https://github.com/anthol42/libparasail-sys?branch=main#a5dc3d03dedbdcda324a35ec2ed69d7cd42cada6"
+version = "0.2.0"
+source = "git+https://github.com/anthol42/libparasail-sys?branch=main#e9b1043cf6ba459d3e5e440e31df1819a0cce660"
 dependencies = [
  "bindgen",
  "cmake",
@@ -469,15 +469,15 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "parasail-rs"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8958e6b5caa4ba12bb41a1e4b980597aaabbc8f91763752ca6ed02f72a670ede"
+checksum = "40cf15218ef48ea888aac1415e75662590b3cb7b1378ac99ac8e1910e90f2350"
 dependencies = [
+ "bitflags",
  "derive_more",
  "libc",
  "libparasail-sys",
  "log",
- "thiserror",
 ]
 
 [[package]]

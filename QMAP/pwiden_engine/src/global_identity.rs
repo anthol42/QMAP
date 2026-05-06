@@ -1,8 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use numpy::{IntoPyArray, PyArray2};
-use parasail_rs::Matrix;
-use parasail_rs::Aligner;
+use parasail_rs::prelude::{Matrix, Aligner};
 use crate::utils::alignment::compute_upper_triangle_matrix;
 
 /// Computes pairwise sequence identity matrix using global alignment.

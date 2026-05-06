@@ -1,4 +1,4 @@
-use parasail_rs::Aligner;
+use parasail_rs::prelude::Aligner;
 use ndarray::Array2;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;

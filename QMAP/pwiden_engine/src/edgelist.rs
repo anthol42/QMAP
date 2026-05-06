@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
-use parasail_rs::{Matrix, Aligner};
+use parasail_rs::prelude::{Matrix, Aligner};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use indicatif::{ProgressBar, ProgressStyle, ProgressDrawTarget, ProgressState};
