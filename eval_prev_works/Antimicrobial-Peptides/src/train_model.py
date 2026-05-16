@@ -10,7 +10,10 @@ import numpy as np
 import random
 from Bio import SeqIO
 import argparse
-from qmap.benchmark import QMAPBenchmark
+import matplotlib.pyplot as plt
+from scipy import stats
+from qmap.benchmark import QMAPBenchmark, DBAASPDataset
+from qmap.toolkit import compute_maximum_identity
 
 def get_bacterium_df(bacterium, df):
     bacterium_df = df.loc[(df.bacterium.str.contains(bacterium))].groupby(['sequence', 'bacterium'])
@@ -98,7 +101,7 @@ def train_model(bacterium, negatives_ratio=1, epochs=100):
 
     return model
 
-def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
+def train_model_qmap(bacterium, negatives_ratio=1, epochs=100, train_mode=None):
     """
     Bacterium can be E. coli, P. aeruginosa, etc.
     When with_negatives is False, classification error will be 0
@@ -113,6 +116,82 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
     print("Found %s sequences for %s" % (len(bacterium_df), bacterium))
     bacterium_df['vector'] = bacterium_df.sequence.apply(sequence_to_vector)
 
+    if train_mode == 'rnd':
+        x = np.array(list(bacterium_df.vector.values))
+        y = bacterium_df.value.values  # log10(MIC_uM)
+        sequences = bacterium_df['sequence'].tolist()
+
+        rng = np.random.default_rng(42)
+        perm = rng.permutation(len(x))
+        split_point = int(0.8 * len(x))
+        train_idx, test_idx = perm[:split_point], perm[split_point:]
+
+        train_x, train_y = x[train_idx], y[train_idx]
+        random.seed(42)
+        train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
+
+        test_sequences = [sequences[i] for i in test_idx]
+        test_mic_uM = 10 ** y[test_idx]
+        test_x = np.array([sequence_to_vector(seq) for seq in test_sequences])
+        eval_benchmark = DBAASPDataset([
+            {
+                'id': i,
+                'sequence': seq,
+                'smiles': [],
+                'nterminal': None,
+                'cterminal': None,
+                'bonds': [],
+                'targets': {'Escherichia coli': (float(mic), float(mic), float(mic))},
+                'hemolytic_hc50': None
+            }
+            for i, (seq, mic) in enumerate(zip(test_sequences, test_mic_uM))
+        ])
+
+        model = conv_model()
+        model.fit(train_x, train_y, epochs=epochs)
+        preds = model.predict(test_x)[:, 0]
+        preds = [{'Escherichia coli': val.item()} for val in preds]
+        results = eval_benchmark.compute_metrics(preds)["Escherichia coli"]
+        print(f"{Colors.green}{results}{Colors.reset}")
+
+        if not os.path.exists('results'):
+            os.makedirs('results')
+        pd.DataFrame([results.dict()]).to_csv('results/rnd_split.csv')
+        print(results.md_col, end="")
+        print(results.md_row, end="")
+
+        # Identity scatter: max train-test identity vs absolute error
+        train_sequences = [sequences[i] for i in train_idx]
+        max_identity = compute_maximum_identity(train_sequences, test_sequences)
+
+        pred_values = model.predict(test_x)[:, 0]
+        test_targets = y[test_idx]
+        abs_error = np.abs(pred_values - test_targets)
+
+        pearson_r, pearson_p = stats.pearsonr(max_identity, abs_error)
+        spearman_r, spearman_p = stats.spearmanr(max_identity, abs_error)
+
+        slope, intercept, *_ = stats.linregress(max_identity, abs_error)
+        x_line = np.linspace(max_identity.min(), max_identity.max(), 200)
+        y_line = slope * x_line + intercept
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(max_identity, abs_error, alpha=0.4, s=15)
+        ax.plot(x_line, y_line, color='tab:red', linewidth=1.5, label='Linear fit')
+        ax.set_xlabel('Max sequence identity to nearest train sample')
+        ax.set_ylabel('Absolute error (log₁₀ MIC)')
+        ax.set_title('Identity vs prediction error — random split (AMP conv / E. coli)')
+        ax.set_ylim(0, None)
+        ax.text(0.03, 0.97,
+                f"Pearson r = {pearson_r:.3f} (p={pearson_p:.2e})\nSpearman ρ = {spearman_r:.3f} (p={spearman_p:.2e})",
+                transform=ax.transAxes, va='top', fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+        ax.legend()
+        plt.tight_layout()
+        plt.savefig('results/rnd_identity_vs_error.png', dpi=150)
+        plt.show()
+        return
+
     # Make the train set
     all_results = []
     all_results_high_eff = []
@@ -126,16 +205,48 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
                          .with_length_range(None, 100)
                          )
         x = np.array(list(bacterium_df.vector.values))
-        y = bacterium_df.value.values
+        y = bacterium_df.value.values  # log10(MIC_uM)
 
         # Mask sequences too close to the test set
         sequences = bacterium_df['sequence'].tolist()
         mask = benchmark.get_train_mask(sequences)
-        train_x = x[mask]
-        train_y = y[mask]
+        train_x_all = x[mask]
+        train_y_all = y[mask]
+
+        n_he = int((train_y_all < np.log10(10)).sum())
+        if train_mode == 'he':
+            he = train_y_all < np.log10(10)
+            train_x = train_x_all[he]
+            train_y = train_y_all[he]
+        elif train_mode == 'me':
+            me = (train_y_all >= np.log10(10)) & (train_y_all <= np.log10(100))
+            train_x, train_y = train_x_all[me], train_y_all[me]
+            if len(train_y) > n_he:
+                rng = np.random.default_rng(42)
+                idx = rng.choice(len(train_y), n_he, replace=False)
+                train_x, train_y = train_x[idx], train_y[idx]
+        elif train_mode == 'le':
+            le = train_y_all > np.log10(100)
+            train_x, train_y = train_x_all[le], train_y_all[le]
+            if len(train_y) > n_he:
+                rng = np.random.default_rng(42)
+                idx = rng.choice(len(train_y), n_he, replace=False)
+                train_x, train_y = train_x[idx], train_y[idx]
+        else:
+            train_x, train_y = train_x_all, train_y_all
+
         train_x, train_y = add_random_negative_examples(train_x, train_y, negatives_ratio)
 
-        test_x, test_y = benchmark.tabular(["sequence"])["sequence"].tolist(), np.log10(benchmark.tabular(["Escherichia coli"])["Escherichia coli"].values)
+        if train_mode == 'he':
+            eval_benchmark = benchmark.with_efficiency_below(10.)
+        elif train_mode == 'me':
+            eval_benchmark = benchmark.filter(lambda s: any(10 <= t.consensus <= 100 for t in s.targets.values()))
+        elif train_mode == 'le':
+            eval_benchmark = benchmark.filter(lambda s: any(t.consensus > 100 for t in s.targets.values()))
+        else:
+            eval_benchmark = benchmark
+
+        test_x, test_y = eval_benchmark.tabular(["sequence"])["sequence"].tolist(), np.log10(eval_benchmark.tabular(["Escherichia coli"])["Escherichia coli"].values)
         test_x = np.array([sequence_to_vector(seq) for seq in test_x])
 
         model = conv_model()
@@ -144,27 +255,30 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100):
         print(evaluate(model, test_x, test_y))
         preds = model.predict(test_x)[:, 0]
         preds = [{'Escherichia coli': val.item()} for val in preds]
-        results = benchmark.compute_metrics(preds)["Escherichia coli"]
+        results = eval_benchmark.compute_metrics(preds)["Escherichia coli"]
         all_results.append(results)
         print(results)
         print(Colors.reset)
 
-
-        high_eff_benchmark = benchmark.with_efficiency_below(10.)
-        test_x = np.array([sequence_to_vector(seq) for seq in high_eff_benchmark.tabular(["sequence"])["sequence"].tolist()])
-        preds = model.predict(test_x)[:, 0]
-        preds = [{'Escherichia coli': val.item()} for val in preds]
-        all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
+        if not train_mode:
+            high_eff_benchmark = benchmark.with_efficiency_below(10.)
+            test_x = np.array([sequence_to_vector(seq) for seq in high_eff_benchmark.tabular(["sequence"])["sequence"].tolist()])
+            preds = model.predict(test_x)[:, 0]
+            preds = [{'Escherichia coli': val.item()} for val in preds]
+            all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
 
 
     all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
-    high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
 
     # Export to pandas
     if not os.path.exists('results'):
         os.makedirs('results')
-    all_result_table.to_csv('results/full.csv')
-    high_efficiency.to_csv('results/high_efficiency.csv')
+    if train_mode:
+        all_result_table.to_csv(f'results/train_{train_mode}.csv')
+    else:
+        high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
+        all_result_table.to_csv('results/full.csv')
+        high_efficiency.to_csv('results/high_efficiency.csv')
 
     print(all_results[0].md_col, end="")
     for results in all_results:

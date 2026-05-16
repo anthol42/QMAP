@@ -445,7 +445,7 @@ wheels = [
 
 [[package]]
 name = "qmap-benchmark"
-version = "0.0.0"
+version = "0.1.2"
 source = { directory = "../../QMAP" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -468,10 +468,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "cibuildwheel", specifier = ">=2.23.3" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "setuptools", specifier = ">=80.9.0" },
+    { name = "torch", specifier = ">=2.8.0" },
     { name = "transformers", specifier = ">=4.54.1" },
 ]
 
