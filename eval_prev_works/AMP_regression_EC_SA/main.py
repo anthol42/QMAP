@@ -94,6 +94,8 @@ if __name__ == '__main__':
         all_results_high_complexity = []
         all_results_low_complexity = []
         all_results_high_eff = []
+        all_results_me = []
+        all_results_le = []
 
         train_data = pd.read_csv(full_path)
         valid_data = pd.read_csv(test_path)
@@ -163,6 +165,14 @@ if __name__ == '__main__':
                 preds = predict(model, high_eff_benchmark.tabular(["sequence"])["sequence"].tolist())
                 all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
 
+                me_benchmark = benchmark.filter(lambda s: any(10 <= t.consensus <= 100 for t in s.targets.values()))
+                preds = predict(model, me_benchmark.tabular(["sequence"])["sequence"].tolist())
+                all_results_me.append(me_benchmark.compute_metrics(preds)["Escherichia coli"])
+
+                le_benchmark = benchmark.filter(lambda s: any(t.consensus > 100 for t in s.targets.values()))
+                preds = predict(model, le_benchmark.tabular(["sequence"])["sequence"].tolist())
+                all_results_le.append(le_benchmark.compute_metrics(preds)["Escherichia coli"])
+
         all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
 
         # Export to pandas
@@ -178,12 +188,16 @@ if __name__ == '__main__':
             all_result_table.to_csv(f'results/train_le{es_suffix}.csv')
         else:
             high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
+            me_efficiency = pd.DataFrame([result.dict() for result in all_results_me])
+            le_efficiency = pd.DataFrame([result.dict() for result in all_results_le])
             if early_stopping:
                 all_result_table.to_csv('results/full_es.csv')
                 high_efficiency.to_csv('results/high_efficiency_es.csv')
             else:
                 all_result_table.to_csv('results/full.csv')
                 high_efficiency.to_csv('results/high_efficiency.csv')
+                me_efficiency.to_csv('results/me_efficiency.csv')
+                le_efficiency.to_csv('results/le_efficiency.csv')
         print(all_results[0].md_col, end="")
         for results in all_results:
             print(results.md_row, end="")

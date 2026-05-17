@@ -71,6 +71,7 @@ if __name__ == "__main__":
         abs_error = np.abs(pred_values - test_targets)
 
         pearson_r, pearson_p = stats.pearsonr(max_identity, abs_error)
+        print("Pearson r:", pearson_r)
         spearman_r, spearman_p = stats.spearmanr(max_identity, abs_error)
 
         slope, intercept, *_ = stats.linregress(max_identity, abs_error)
@@ -185,46 +186,6 @@ if __name__ == "__main__":
             high_efficiency.to_csv('results/high_efficiency.csv')
             me_efficiency.to_csv('results/me_efficiency.csv')
             le_efficiency.to_csv('results/le_efficiency.csv')
-
-            # Stratified violin plot: correlation metrics by efficiency category
-            metrics = ['kendalls_tau', 'spearman', 'pearson']
-            alias = ["Kendall's τ", 'Spearman', 'Pearson']
-            categories = {
-                'High Efficiency': high_efficiency,
-                'Mid Efficiency': me_efficiency,
-                'Low Efficiency': le_efficiency,
-            }
-            rows = []
-            for metric in metrics:
-                for cat_name, df in categories.items():
-                    for value in df[metric]:
-                        rows.append({'Metric': metric, 'Value': value, 'Evaluation Regime': cat_name})
-            df_long = pd.DataFrame(rows)
-
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.violinplot(x='Metric', y='Value', hue='Evaluation Regime', data=df_long, ax=ax, inner=None)
-            sns.swarmplot(x='Metric', y='Value', hue='Evaluation Regime', data=df_long, ax=ax,
-                          dodge=True, size=4, color='k', alpha=0.7, legend=False)
-
-            bodies = [c for c in ax.collections if isinstance(c, PolyCollection)]
-            idx = 0
-            for metric in metrics:
-                for cat_name in categories.keys():
-                    values = df_long[(df_long['Metric'] == metric) & (df_long['Evaluation Regime'] == cat_name)]['Value']
-                    median = np.median(values)
-                    verts = bodies[idx].get_paths()[0].vertices
-                    ax.hlines(median, verts[:, 0].min(), verts[:, 0].max(), color='k', linewidth=1)
-                    idx += 1
-
-            ax.set_xticks(range(len(alias)))
-            ax.set_xticklabels(alias)
-            ax.set_xlabel('')
-            ax.set_ylabel('Correlation')
-            ax.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.savefig('../figs/stratified_violin_linear.pdf')
-            plt.savefig('../figs/stratified_violin_linear.svg')
-            plt.show()
 
         print(all_results[0].md_col, end="")
         for results in all_results:

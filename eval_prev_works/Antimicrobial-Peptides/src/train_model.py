@@ -195,6 +195,8 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100, train_mode=None):
     # Make the train set
     all_results = []
     all_results_high_eff = []
+    all_results_me = []
+    all_results_le = []
     for i in range(5):
         print(f'{Colors.orange}Running split {i}{Colors.reset}')
         benchmark = (QMAPBenchmark(i)
@@ -267,6 +269,18 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100, train_mode=None):
             preds = [{'Escherichia coli': val.item()} for val in preds]
             all_results_high_eff.append(high_eff_benchmark.compute_metrics(preds)["Escherichia coli"])
 
+            me_benchmark = benchmark.filter(lambda s: any(10 <= t.consensus <= 100 for t in s.targets.values()))
+            test_x = np.array([sequence_to_vector(seq) for seq in me_benchmark.tabular(["sequence"])["sequence"].tolist()])
+            preds = model.predict(test_x)[:, 0]
+            preds = [{'Escherichia coli': val.item()} for val in preds]
+            all_results_me.append(me_benchmark.compute_metrics(preds)["Escherichia coli"])
+
+            le_benchmark = benchmark.filter(lambda s: any(t.consensus > 100 for t in s.targets.values()))
+            test_x = np.array([sequence_to_vector(seq) for seq in le_benchmark.tabular(["sequence"])["sequence"].tolist()])
+            preds = model.predict(test_x)[:, 0]
+            preds = [{'Escherichia coli': val.item()} for val in preds]
+            all_results_le.append(le_benchmark.compute_metrics(preds)["Escherichia coli"])
+
 
     all_result_table = pd.DataFrame([all_result.dict() for all_result in all_results])
 
@@ -277,8 +291,12 @@ def train_model_qmap(bacterium, negatives_ratio=1, epochs=100, train_mode=None):
         all_result_table.to_csv(f'results/train_{train_mode}.csv')
     else:
         high_efficiency = pd.DataFrame([result.dict() for result in all_results_high_eff])
+        me_efficiency = pd.DataFrame([result.dict() for result in all_results_me])
+        le_efficiency = pd.DataFrame([result.dict() for result in all_results_le])
         all_result_table.to_csv('results/full.csv')
         high_efficiency.to_csv('results/high_efficiency.csv')
+        me_efficiency.to_csv('results/me_efficiency.csv')
+        le_efficiency.to_csv('results/le_efficiency.csv')
 
     print(all_results[0].md_col, end="")
     for results in all_results:
