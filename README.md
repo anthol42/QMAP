@@ -1,12 +1,12 @@
 # QMAP benchmark
-A domain-specific homology aware benchmark that ensure robust performance evaluation and comparison between models predicting MIC and/or HC50 (regression).
+A domain-specific homology aware benchmark that ensures robust performance evaluation and comparison between models predicting MIC and/or HC50 (regression).
 
 Features:
 - Regression on consensus bacterial MIC and mammal HC50
 - Predefined splits, to ensure comparability
 - N-terminal acetylation and C-terminal amidation
-- Common noncannonical amino acids O: Ornithine and B: 2,4-Diaminobutyric acid
-- Non-cannonical peptides as SMILES
+- Common noncanonical amino acids O: Ornithine and B: 2,4-Diaminobutyric acid
+- Non-canonical peptides as SMILES
 - Intrachain bonds: 
 - Machine learning ready dataset
 - Extendable training dataset, so you can use your own data.
@@ -55,6 +55,13 @@ The repo is structured as follow:
 - [`figures`](figures/README.md): Contains multiple notebooks to generate additional visualizations.
 
 - [`QMAP`](QMAP/README.md): The PyPi package code.
+
+## LICENSE
+- **Code:** [MIT](LICENSE)
+- **Data:** Derived from [DBAASP](https://dbaasp.org) and subject to the
+  [DBAASP Data Access Policy](https://dbaasp.org/terms-and-conditions), which allows
+  redistribution but requires that DBAASP be acknowledged as the source. If you use the
+  QMAP data, please also cite DBAASP (see below).
 
 ## Please Cite
 Please cite us if you find yourself using our work
